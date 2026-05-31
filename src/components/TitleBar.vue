@@ -77,6 +77,7 @@ function close() {
   display: flex;
   height: 100%;
   -webkit-app-region: no-drag;
+  pointer-events: auto;
 }
 
 .titlebar-btn {

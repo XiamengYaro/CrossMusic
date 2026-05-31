@@ -19,10 +19,16 @@
     "electron:dev": "vite build && npx electron .",
     "electron:build": "vite build && electron-builder --mac",
     "electron:build:dmg": "vite build && electron-builder --mac dmg",
+    "electron:build:mac": "vite build && electron-builder --mac --arm64 --x64",
+    "electron:build:mac:arm64": "vite build && electron-builder --mac --arm64",
+    "electron:build:mac:x64": "vite build && electron-builder --mac --x64",
     "electron:build:win": "vite build && electron-builder --win --x64",
-    "electron:build:win32": "vite build && electron-builder --win --ia32",
+    "electron:build:win:x64": "vite build && electron-builder --win --x64",
+    "electron:build:win:arm64": "vite build && electron-builder --win --arm64",
     "electron:build:linux": "vite build && electron-builder --linux",
-    "electron:build:all": "vite build && electron-builder --mac --win --linux --x64"
+    "electron:build:linux:x64": "vite build && electron-builder --linux --x64",
+    "electron:build:linux:arm64": "vite build && electron-builder --linux --arm64",
+    "electron:build:all": "vite build && electron-builder --mac --win --linux --x64 --arm64"
   },
   "build": {
     "appId": "com.crossmusic.app",
