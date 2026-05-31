@@ -1,0 +1,84 @@
+{
+  "name": "CloudMusic",
+  "private": true,
+  "version": "1.0.0",
+  "description": "CloudMusic for macOS - 网易云音乐客户端",
+  "author": "CloudMusic",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "electron:dev": "vite build && npx electron .",
+    "electron:build": "vite build && electron-builder --mac",
+    "electron:build:dmg": "vite build && electron-builder --mac dmg",
+    "electron:build:win": "vite build && electron-builder --win --x64",
+    "electron:build:win32": "vite build && electron-builder --win --ia32",
+    "electron:build:linux": "vite build && electron-builder --linux",
+    "electron:build:all": "vite build && electron-builder --mac --win --linux --x64"
+  },
+  "build": {
+    "appId": "com.cloudmusic.app",
+    "productName": "CloudMusic",
+    "mac": {
+      "category": "public.app-category.music",
+      "icon": "build/icon.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "identity": null
+    },
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerLanguages": ["zh_CN", "en_US"],
+      "language": "2052"
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Audio"
+    },
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "server/**/*"
+    ],
+    "extraResources": [],
+    "compression": "maximum"
+  },
+  "dependencies": {
+    "axios": "^1.16.1",
+    "express": "^5.2.1",
+    "express-fileupload": "^1.5.2",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.34",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.6",
+    "electron": "^42.3.0",
+    "electron-builder": "^26.8.1",
+    "vite": "^8.0.12"
+  }
+}

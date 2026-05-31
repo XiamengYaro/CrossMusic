@@ -1,0 +1,619 @@
+<template>
+  <div class="player-bar">
+    <!-- Left: Song Info -->
+    <div class="player-left">
+      <img
+        v-if="playerStore.currentSong?.al?.picUrl"
+        :src="playerStore.currentSong.al.picUrl + '?param=60y60'"
+        class="cover"
+        :style="{ transform: `rotate(${spinAngle}deg)` }"
+        @click="$emit('toggle-lyric')"
+      />
+      <div v-else class="cover-placeholder" @click="$emit('toggle-lyric')">
+        <Icon name="music" :size="22" />
+      </div>
+      <div class="song-meta">
+        <span class="song-name text-ellipsis">{{ playerStore.currentSong?.name || '未播放' }}</span>
+        <span class="song-artist text-ellipsis">{{ artistNames }}</span>
+      </div>
+      <button
+        v-if="playerStore.currentSong"
+        class="btn-like"
+        @click="toggleLike"
+        :title="isLiked ? '取消喜欢' : '喜欢'"
+      >
+        <Icon :name="isLiked ? 'heartFilled' : 'heart'" :size="16" />
+      </button>
+    </div>
+
+    <!-- Center: Controls -->
+    <div class="player-center">
+      <div class="controls">
+        <button class="ctrl-btn" :title="modeTitle" @click="toggleMode">
+          <Icon :name="modeIconName" :size="16" />
+        </button>
+        <button class="ctrl-btn" @click="playerStore.playPrev()">
+          <Icon name="skipBack" :size="16" />
+        </button>
+        <button class="ctrl-btn play-btn" @click="playerStore.togglePlay()">
+          <Icon :name="playerStore.isPlaying ? 'pause' : 'play'" :size="18" />
+        </button>
+        <button class="ctrl-btn" @click="playerStore.playNext()">
+          <Icon name="skipForward" :size="16" />
+        </button>
+        <button class="ctrl-btn" title="歌词" @click="$emit('toggle-lyric')">
+          <Icon name="musicNote" :size="16" />
+        </button>
+      </div>
+      <div class="progress-bar">
+        <span class="time">{{ formatTime(playerStore.currentTime) }}</span>
+        <div class="bar-track" @click="seekTo">
+          <div class="bar-fill" :style="{ width: playerStore.progress + '%' }"></div>
+          <div class="bar-thumb" :style="{ left: playerStore.progress + '%' }"></div>
+        </div>
+        <span class="time">{{ formatTime(playerStore.duration) }}</span>
+      </div>
+    </div>
+
+    <!-- Right: Volume & Quality & Playlist -->
+    <div class="player-right">
+      <!-- Quality Selector -->
+      <div class="quality-selector">
+        <button class="quality-btn" @click="showQuality = !showQuality">
+          {{ qualityLabel }}
+        </button>
+        <div v-if="showQuality" class="quality-dropdown">
+          <div
+            v-for="q in qualityOptions"
+            :key="q.value"
+            class="quality-option"
+            :class="{ active: playerStore.quality === q.value }"
+            @click="selectQuality(q.value)"
+          >
+            {{ q.label }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Volume -->
+      <div class="volume-control">
+        <button class="ctrl-btn vol-btn" @click="toggleMute">
+          <Icon :name="volumeIconName" :size="16" />
+        </button>
+        <div class="vol-slider-wrap">
+          <div class="vol-track" @click="setVolume">
+            <div class="vol-fill" :style="{ width: (playerStore.volume * 100) + '%' }"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Playlist Toggle -->
+      <button class="ctrl-btn playlist-btn" title="播放列表" @click="togglePlaylist">
+        <Icon name="list" :size="16" />
+      </button>
+    </div>
+
+    <!-- Playlist Drawer -->
+    <div v-if="showPlaylist" class="playlist-drawer-overlay" @click.self="showPlaylist = false">
+      <div class="playlist-drawer">
+        <div class="drawer-header">
+          <span class="drawer-title">播放列表 ({{ playerStore.playlist.length }})</span>
+          <div class="drawer-actions">
+            <button class="drawer-btn" @click="playerStore.clearPlaylist()">清空</button>
+            <button class="drawer-btn" @click="showPlaylist = false"><Icon name="close" :size="16" /></button>
+          </div>
+        </div>
+        <div class="drawer-list">
+          <div
+            v-for="(song, idx) in playerStore.playlist"
+            :key="song.id + '-' + idx"
+            class="drawer-item"
+            :class="{ active: idx === playerStore.currentIndex, 'drag-over': dragOverIdx === idx }"
+            draggable="true"
+            @dragstart="onDragStart(idx)"
+            @dragover.prevent="onDragOver(idx)"
+            @dragleave="onDragLeave"
+            @drop="onDrop(idx)"
+            @dblclick="playFromPlaylist(idx)"
+          >
+            <Icon v-if="idx === playerStore.currentIndex && playerStore.isPlaying" name="music" :size="12" class="playing-icon" />
+            <span v-else class="item-idx">{{ idx + 1 }}</span>
+            <span class="item-name text-ellipsis">{{ song.name }}</span>
+            <span class="item-sep">-</span>
+            <span class="item-artist text-ellipsis">{{ (song.ar || []).map(a => a.name).join('/') }}</span>
+            <button class="item-remove" @click="removeFromPlaylist(idx)"><Icon name="close" :size="12" /></button>
+          </div>
+          <div v-if="playerStore.playlist.length === 0" class="drawer-empty">暂无歌曲</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onUnmounted } from 'vue'
+import { usePlayerStore } from '@/stores/player'
+import { useUserStore } from '@/stores/user'
+import { likeSong } from '@/api/song'
+import { getItem, setItem } from '@/utils/storage'
+import { formatTime } from '@/utils/format'
+import { showToast } from '@/utils/toast'
+import { useSpinning } from '@/utils/spinning'
+import Icon from '@/components/icons/Icon.vue'
+
+const emit = defineEmits(['toggle-lyric'])
+const playerStore = usePlayerStore()
+const userStore = useUserStore()
+const showQuality = ref(false)
+const showPlaylist = ref(false)
+const prevVolume = ref(0.7)
+
+const isSpinPlaying = computed(() => playerStore.isPlaying && !!playerStore.currentSong)
+const { angle: spinAngle, stop: stopSpin } = useSpinning(isSpinPlaying)
+onUnmounted(() => stopSpin())
+
+const artistNames = computed(() => {
+  const song = playerStore.currentSong
+  if (!song) return ''
+  return (song.ar || song.artists || []).map((a) => a.name).join(' / ')
+})
+
+const qualityOptions = computed(() => playerStore.availableQualities)
+
+const qualityLabel = computed(() => {
+  return playerStore.currentQualityLabel
+})
+
+const modeIconName = computed(() => {
+  const map = { sequence: 'order', random: 'shuffle', repeat: 'repeat' }
+  return map[playerStore.playMode] || 'order'
+})
+
+const modeTitle = computed(() => {
+  const map = { sequence: '顺序播放', random: '随机播放', repeat: '单曲循环' }
+  return map[playerStore.playMode] || '顺序播放'
+})
+
+const volumeIconName = computed(() => {
+  if (playerStore.volume === 0) return 'volumeX'
+  if (playerStore.volume < 0.5) return 'volume1'
+  return 'volume2'
+})
+
+// Like
+const likedSet = ref(new Set(getItem('likedIds') || []))
+const isLiked = computed(() => {
+  const song = playerStore.currentSong
+  return song ? likedSet.value.has(song.id) : false
+})
+
+async function toggleLike() {
+  const song = playerStore.currentSong
+  if (!song) return
+  if (!userStore.userId) return
+  const willLike = !isLiked.value
+  try {
+    await likeSong(song.id, willLike)
+    if (willLike) {
+      likedSet.value.add(song.id)
+      showToast(`已添加入「喜欢的音乐」`, 'like')
+    } else {
+      likedSet.value.delete(song.id)
+      showToast(`已从「喜欢的音乐」中移除`, 'info')
+    }
+    setItem('likedIds', Array.from(likedSet.value))
+  } catch (e) {
+    console.error('喜欢操作失败:', e)
+  }
+}
+
+function toggleMode() {
+  const modes = ['sequence', 'random', 'repeat']
+  const idx = modes.indexOf(playerStore.playMode)
+  playerStore.setPlayMode(modes[(idx + 1) % modes.length])
+}
+
+function seekTo(e) {
+  const rect = e.currentTarget.getBoundingClientRect()
+  const percent = ((e.clientX - rect.left) / rect.width) * 100
+  playerStore.seekTo(Math.max(0, Math.min(100, percent)))
+}
+
+function toggleMute() {
+  if (playerStore.volume > 0) {
+    prevVolume.value = playerStore.volume
+    playerStore.setVolume(0)
+  } else {
+    playerStore.setVolume(prevVolume.value)
+  }
+}
+
+function setVolume(e) {
+  const rect = e.currentTarget.getBoundingClientRect()
+  const val = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+  playerStore.setVolume(val)
+}
+
+function selectQuality(q) {
+  playerStore.setQuality(q)
+  showQuality.value = false
+}
+
+function togglePlaylist() {
+  showPlaylist.value = !showPlaylist.value
+}
+
+function removeFromPlaylist(idx) {
+  playerStore.playlist.splice(idx, 1)
+  if (idx < playerStore.currentIndex) {
+    playerStore.currentIndex--
+  } else if (idx === playerStore.currentIndex && playerStore.currentIndex >= playerStore.playlist.length) {
+    playerStore.currentIndex = playerStore.playlist.length - 1
+  }
+}
+
+function playFromPlaylist(idx) {
+  playerStore.currentIndex = idx
+  playerStore.playSong(playerStore.playlist[idx])
+}
+
+// 拖拽排序
+const dragIdx = ref(-1)
+const dragOverIdx = ref(-1)
+
+function onDragStart(idx) { dragIdx.value = idx }
+function onDragOver(idx) { dragOverIdx.value = idx }
+function onDragLeave() { dragOverIdx.value = -1 }
+function onDrop(targetIdx) {
+  if (dragIdx.value < 0 || dragIdx.value === targetIdx) { dragOverIdx.value = -1; return }
+  const list = [...playerStore.playlist]
+  const [moved] = list.splice(dragIdx.value, 1)
+  list.splice(targetIdx, 0, moved)
+  playerStore.playlist = list
+  // 更新 currentIndex
+  if (playerStore.currentIndex === dragIdx.value) {
+    playerStore.currentIndex = targetIdx
+  } else if (dragIdx.value < playerStore.currentIndex && targetIdx >= playerStore.currentIndex) {
+    playerStore.currentIndex--
+  } else if (dragIdx.value > playerStore.currentIndex && targetIdx <= playerStore.currentIndex) {
+    playerStore.currentIndex++
+  }
+  dragIdx.value = -1
+  dragOverIdx.value = -1
+}
+</script>
+
+<style scoped>
+.player-bar {
+  height: var(--player-height);
+  background: rgba(44, 44, 44, 0.5);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-top: var(--glass-border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 20px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.player-bar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--glass-highlight);
+  pointer-events: none;
+}
+
+.player-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 220px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.cover {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  cursor: pointer;
+  transition: transform 0.1s linear;
+}
+.cover:hover {
+  transform: scale(1.1) !important;
+}
+
+.cover-placeholder {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.cover-placeholder:hover {
+  transform: scale(1.1);
+}
+
+.song-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.song-name {
+  font-size: 13px;
+  font-weight: 600;
+  max-width: 160px;
+}
+
+.song-artist {
+  font-size: 12px;
+  color: var(--text-secondary);
+  max-width: 160px;
+}
+
+.btn-like {
+  color: var(--text-tertiary);
+  transition: color 0.15s;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+}
+.btn-like:hover { color: var(--accent); }
+.btn-like :deep(.icon-heart-filled) { color: var(--accent); }
+
+.player-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ctrl-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+}
+
+.ctrl-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.play-btn {
+  width: 38px;
+  height: 38px;
+  background: var(--accent);
+  color: white !important;
+}
+
+.play-btn:hover {
+  background: var(--accent-hover) !important;
+}
+
+.progress-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 500px;
+}
+
+.time {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  min-width: 36px;
+  text-align: center;
+}
+
+.bar-track {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  position: relative;
+  cursor: pointer;
+}
+
+.bar-track:hover { height: 6px; }
+.bar-track:hover .bar-thumb { opacity: 1; }
+
+.bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.1s linear;
+}
+
+.bar-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.player-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 220px;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.quality-selector { position: relative; }
+
+.quality-btn {
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+}
+.quality-btn:hover { background: rgba(255, 255, 255, 0.12); color: var(--text-primary); }
+
+.quality-dropdown {
+  position: absolute;
+  bottom: 36px;
+  right: 0;
+  background: rgba(44, 44, 44, 0.85);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  z-index: 100;
+  min-width: 80px;
+}
+
+.quality-option {
+  padding: 8px 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.quality-option:hover { background: rgba(255, 255, 255, 0.06); color: var(--text-primary); }
+.quality-option.active { color: var(--accent); background: var(--accent-light); }
+
+.volume-control { display: flex; align-items: center; gap: 6px; }
+.vol-btn { width: 28px; height: 28px; }
+.vol-slider-wrap { width: 80px; }
+
+.vol-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.vol-fill {
+  height: 100%;
+  background: var(--text-secondary);
+  border-radius: 2px;
+  transition: width 0.1s;
+}
+.vol-track:hover .vol-fill { background: var(--accent); }
+
+.playlist-btn { width: 28px; height: 28px; }
+
+/* Playlist Drawer */
+.playlist-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.playlist-drawer {
+  width: 360px;
+  height: 100%;
+  background: rgba(30, 30, 30, 0.95);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-left: var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-light);
+  padding-top: calc(var(--titlebar-height) + 16px);
+}
+
+.drawer-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.drawer-actions { display: flex; align-items: center; gap: 8px; }
+
+.drawer-btn {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s;
+}
+.drawer-btn:hover { background: rgba(255, 255, 255, 0.06); color: var(--text-primary); }
+
+.drawer-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+
+.drawer-list::-webkit-scrollbar { width: 6px; }
+.drawer-list::-webkit-scrollbar-track { background: transparent; }
+.drawer-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+
+.drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  cursor: default;
+  transition: background 0.15s;
+  font-size: 13px;
+}
+
+.drawer-item:hover { background: rgba(255, 255, 255, 0.04); }
+.drawer-item.active { color: var(--accent); }
+.drawer-item.drag-over { border-top: 2px solid var(--accent); }
+
+.item-idx { width: 24px; text-align: center; color: var(--text-tertiary); font-size: 12px; }
+.playing-icon { color: var(--accent); width: 24px; text-align: center; }
+.item-name { flex: 1; min-width: 0; }
+.item-sep { color: var(--text-tertiary); }
+.item-artist { width: 100px; font-size: 12px; color: var(--text-tertiary); }
+.item-remove {
+  opacity: 0;
+  color: var(--text-tertiary);
+  transition: all 0.15s;
+  padding: 2px;
+}
+.item-remove:hover { color: var(--accent); }
+.drawer-item:hover .item-remove { opacity: 1; }
+.drawer-empty { text-align: center; padding: 40px 0; color: var(--text-tertiary); }
+</style>

@@ -1,0 +1,256 @@
+:root {
+  /* macOS Dark Theme Colors */
+  --bg-primary: #1e1e1e;
+  --bg-secondary: #2c2c2c;
+  --bg-tertiary: #363636;
+  --bg-hover: #3a3a3a;
+  --bg-active: #4a4a4a;
+  --bg-sidebar: rgba(30, 30, 30, 0.55);
+  --bg-card: rgba(44, 44, 44, 0.6);
+  --bg-modal: rgba(44, 44, 44, 0.7);
+  --bg-input: rgba(58, 58, 58, 0.7);
+
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0a0;
+  --text-tertiary: #666666;
+  --text-accent: #ff4757;
+
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-light: rgba(255, 255, 255, 0.05);
+
+  --accent: #ff4757;
+  --accent-hover: #ff6b7a;
+  --accent-light: rgba(255, 71, 87, 0.15);
+
+  --green: #2ed573;
+  --blue: #1e90ff;
+  --orange: #ffa502;
+
+  --sidebar-width: 240px;
+  --player-height: 80px;
+  --titlebar-height: 38px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
+
+  /* Liquid Glass Effect */
+  --glass-blur: blur(40px) saturate(200%);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+  --glass-highlight: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0) 50%, rgba(255, 255, 255, 0.03) 100%);
+
+  --vip-bg: linear-gradient(135deg, #e6a23c, #f0c060);
+
+  --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Light Theme */
+:root[data-theme="light"] {
+  --bg-primary: #f5f5f7;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e8e8ed;
+  --bg-hover: #eaeaef;
+  --bg-active: #d8d8dd;
+  --bg-sidebar: rgba(245, 245, 247, 0.75);
+  --bg-card: rgba(255, 255, 255, 0.7);
+  --bg-modal: rgba(255, 255, 255, 0.8);
+  --bg-input: rgba(232, 232, 237, 0.7);
+
+  --text-primary: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-tertiary: #aeaeb2;
+  --text-accent: #ff3b30;
+
+  --border-color: rgba(0, 0, 0, 0.08);
+  --border-light: rgba(0, 0, 0, 0.05);
+
+  --accent: #ff3b30;
+  --accent-hover: #ff453a;
+  --accent-light: rgba(255, 59, 48, 0.1);
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.16);
+
+  --glass-blur: blur(40px) saturate(180%);
+  --glass-border: 1px solid rgba(0, 0, 0, 0.08);
+  --glass-highlight: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 50%, rgba(255, 255, 255, 0.4) 100%);
+
+  --vip-bg: linear-gradient(135deg, #d48806, #e6a23c);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-family);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 14px;
+  line-height: 1.5;
+  /* 禁止全局文字选中，防止拖动窗口时选中文字 */
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* macOS 拖拽区域 */
+.window-drag-area {
+  position: fixed;
+  top: 0;
+  left: 70px;
+  right: 0;
+  height: 38px;
+  z-index: 10;
+  -webkit-app-region: drag;
+  cursor: default;
+  user-select: none;
+}
+
+/* 允许输入框、文本域等区域选中文字 */
+input, textarea, [contenteditable="true"], .selectable, code, pre {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+#app {
+  height: 100%;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Selection */
+::selection {
+  background: var(--accent);
+  color: white;
+}
+
+/* Links */
+a {
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+/* Button Reset */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: inherit;
+}
+
+/* Input Reset */
+input {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  outline: none;
+}
+
+/* Utility Classes */
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.gap-8 {
+  gap: 8px;
+}
+
+.gap-12 {
+  gap: 12px;
+}
+
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-up-enter-from {
+  transform: translateY(20px);
+  opacity: 0;
+}
+
+.slide-up-leave-to {
+  transform: translateY(-20px);
+  opacity: 0;
+}
