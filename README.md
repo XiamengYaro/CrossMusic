@@ -2,9 +2,6 @@
 
 基于 **Electron + Vue 3 + Vite** 构建的网易云音乐桌面客户端，支持 macOS、Windows、Linux 多平台。
 
-**作者**：[XiamengYaro](https://github.com/XiamengYaro)
-**GitHub**：https://github.com/XiamengYaro/CrossCloud
-**开源协议**：[MIT License](LICENSE)
 
 ## ✨ 功能特性
 
