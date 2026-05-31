@@ -1,9 +1,16 @@
 {
-  "name": "CloudMusic",
+  "name": "CrossMusic",
   "private": true,
-  "version": "1.0.0",
-  "description": "CloudMusic for macOS - 网易云音乐客户端",
-  "author": "CloudMusic",
+  "version": "0.0.6",
+  "description": "CrossMusic - 网易云音乐桌面客户端",
+  "author": {
+    "name": "XiamengYaro",
+    "email": "xiamengyaro@example.com"
+  },
+  "maintainer": {
+    "name": "XiamengYaro",
+    "email": "xiamengyaro@example.com"
+  },
   "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
@@ -18,8 +25,8 @@
     "electron:build:all": "vite build && electron-builder --mac --win --linux --x64"
   },
   "build": {
-    "appId": "com.cloudmusic.app",
-    "productName": "CloudMusic",
+    "appId": "com.crossmusic.app",
+    "productName": "CrossMusic",
     "mac": {
       "category": "public.app-category.music",
       "icon": "build/icon.icns",
@@ -54,7 +61,8 @@
         "AppImage",
         "deb"
       ],
-      "category": "Audio"
+      "category": "Audio",
+      "maintainer": "cloudmusic@example.com"
     },
     "directories": {
       "output": "release"

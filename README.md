@@ -1,6 +1,10 @@
-# CrossMusic - 网易云音乐 第三方桌面客户端
+# CrossMusic - 网易云音乐桌面客户端
 
 基于 **Electron + Vue 3 + Vite** 构建的网易云音乐桌面客户端，支持 macOS、Windows、Linux 多平台。
+
+**作者**：[XiamengYaro](https://github.com/XiamengYaro)
+**GitHub**：https://github.com/XiamengYaro/CrossCloud
+**开源协议**：[MIT License](LICENSE)
 
 ## ✨ 功能特性
 
@@ -61,71 +65,44 @@
 
 ## 🛠️ 技术栈
 
-| 技术 | 说明 |
-|------|------|
-| **Electron** | 桌面应用框架 |
-| **Vue 3** | 前端框架（Composition API） |
-| **Vite** | 构建工具 |
-| **Pinia** | 状态管理 |
-| **Vue Router** | 路由管理 |
-| **NeteaseCloudMusicApi** | 网易云音乐 API 服务端 |
+| 技术 | 说明 | License |
+|------|------|---------|
+| **Electron** | 桌面应用框架 | MIT |
+| **Vue 3** | 前端框架（Composition API） | MIT |
+| **Vite** | 构建工具 | MIT |
+| **Pinia** | 状态管理 | MIT |
+| **Vue Router** | 路由管理 | MIT |
+| **Axios** | HTTP 客户端 | MIT |
+| **Express** | 内置 API 服务 | MIT |
+| **NeteaseCloudMusicApi** | 网易云音乐 API 服务端 | MIT |
+| **electron-builder** | 应用打包工具 | MIT |
 
 ## 📦 项目结构
 
 ```
-crossmusic/
+CrossMusic/
 ├── electron/           # Electron 主进程
 │   ├── main.js         # 主进程入口（窗口管理、托盘、快捷键）
 │   └── preload.js      # 预加载脚本（IPC 通信）
-├── server/             # 内置 API 服务（NeteaseCloudMusicApi）
+├── server/             # 内置 API 服务（NeteaseCloudMusicApi Enhanced）
 │   ├── server.js       # 服务入口
 │   ├── module/         # API 模块
-│   └── util/           # 工具函数
+│   ├── util/           # 工具函数
+│   └── package.json    # 服务依赖配置
 ├── src/                # Vue 3 前端源码
 │   ├── api/            # API 接口封装
-│   │   ├── user.js     # 用户相关（登录/VIP/签到）
-│   │   ├── song.js     # 歌曲相关（播放/搜索/歌词）
-│   │   ├── playlist.js # 歌单相关
-│   │   ├── album.js    # 专辑相关
-│   │   ├── artist.js   # 歌手相关
-│   │   ├── cloud.js    # 云盘相关（上传/下载）
-│   │   └── recommend.js# 推荐相关
 │   ├── components/     # 公共组件
-│   │   ├── Sidebar.vue         # 侧边栏导航（含搜索框）
-│   │   ├── PlayerBar.vue       # 底部播放栏
-│   │   ├── SongList.vue        # 歌曲列表
-│   │   ├── LoginModal.vue      # 登录弹窗
-│   │   ├── WelcomeModal.vue    # 欢迎弹窗
-│   │   └── CommentDialog.vue   # 评论弹窗
 │   ├── router/         # 路由配置
 │   ├── stores/         # Pinia 状态管理
-│   │   ├── player.js           # 播放器状态（音质检测/播放控制）
-│   │   ├── user.js             # 用户状态（VIP信息）
-│   │   └── setting.js          # 设置状态（主题/调试/搜索历史）
 │   ├── styles/         # 全局样式（含暗色/亮色主题）
 │   ├── utils/          # 工具函数
-│   │   ├── format.js           # 格式化工具
-│   │   ├── storage.js          # 本地存储
-│   │   ├── spinning.js         # 唱片旋转动画
-│   │   ├── toast.js            # Toast通知
-│   │   └── tauri-api.js        # Electron API适配层
 │   └── views/          # 页面视图
-│       ├── Recommend.vue       # 推荐页
-│       ├── LikedSongs.vue      # 喜欢的音乐
-│       ├── CloudDisk.vue       # 音乐云盘
-│       ├── PersonalFM.vue      # 私人FM
-│       ├── Search.vue          # 搜索页
-│       ├── PlaylistDetail.vue  # 歌单详情
-│       ├── ArtistDetail.vue    # 歌手详情
-│       ├── AlbumDetail.vue     # 专辑详情
-│       ├── LocalMusic.vue      # 本地音乐
-│       ├── RecentPlay.vue      # 最近播放
-│       ├── Settings.vue        # 设置页
-│       └── LyricView.vue       # 歌词视图
 ├── build/              # 应用图标资源
+├── dist/               # Vite 构建产物
 ├── release/            # 打包输出目录
 ├── package.json
-└── vite.config.js
+├── vite.config.js
+└── LICENSE
 ```
 
 ## 🚀 快速开始
@@ -211,4 +188,24 @@ npm run preview         # 预览构建产物
 
 ## 📄 License
 
-MIT
+本项目采用 [MIT License](LICENSE) 开源协议。
+
+### 第三方依赖
+
+本项目使用了以下开源项目，详见 [LICENSE](LICENSE) 文件中的 Third-Party Software Notices：
+
+| 项目 | 用途 | License |
+|------|------|---------|
+| Electron | 桌面应用框架 | MIT |
+| Vue.js | 前端框架 | MIT |
+| Vite | 构建工具 | MIT |
+| Pinia | 状态管理 | MIT |
+| Vue Router | 路由管理 | MIT |
+| Axios | HTTP 客户端 | MIT |
+| Express | API 服务 | MIT |
+| NeteaseCloudMusicApi Enhanced | 网易云音乐 API | MIT |
+| electron-builder | 打包工具 | MIT |
+
+### 声明
+
+本项目仅供学习交流使用，请勿用于商业用途。音乐版权归原作者/版权方所有。
