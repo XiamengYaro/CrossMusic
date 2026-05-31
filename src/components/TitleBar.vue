@@ -1,7 +1,7 @@
 <template>
   <div v-if="isWindows" class="titlebar" data-tauri-drag-region>
     <div class="titlebar-drag" data-tauri-drag-region>
-      <span class="titlebar-title">CloudMusic</span>
+      <span class="titlebar-title">CrossMusic</span>
     </div>
     <div class="titlebar-buttons">
       <button class="titlebar-btn btn-minimize" @click="minimize" title="最小化">

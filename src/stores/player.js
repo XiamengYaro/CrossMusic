@@ -95,6 +95,18 @@ export const usePlayerStore = defineStore('player', () => {
     initAudio()
     loading.value = true
 
+    // 对于非本地歌曲，总是获取完整详情以确保封面、歌手等信息完整
+    if (!song._isLocal) {
+      try {
+        const detail = await getSongDetail(song.id)
+        if (detail.songs && detail.songs[0]) {
+          song = { ...song, ...detail.songs[0] }
+        }
+      } catch (e) {
+        console.warn('获取歌曲详情失败:', e)
+      }
+    }
+
     if (list && list.length > 0) {
       playlist.value = list
       const idx = list.findIndex((s) => s.id === song.id)

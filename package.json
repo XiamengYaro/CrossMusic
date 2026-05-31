@@ -5,11 +5,11 @@
   "description": "CrossMusic - 网易云音乐桌面客户端",
   "author": {
     "name": "XiamengYaro",
-    "email": "xiamengyaro@example.com"
+    "email": "xiameng@xmcraft.cn"
   },
   "maintainer": {
     "name": "XiamengYaro",
-    "email": "xiamengyaro@example.com"
+    "email": "xiameng@xmcraft.cn"
   },
   "main": "electron/main.js",
   "scripts": {
@@ -76,12 +76,24 @@
     "compression": "maximum"
   },
   "dependencies": {
+    "@neteasecloudmusicapienhanced/unblockmusic-utils": "^0.3.2",
     "axios": "^1.16.1",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-fileupload": "^1.5.2",
+    "gzip": "^0.1.0",
+    "music-metadata": "^11.12.3",
+    "node-forge": "^1.4.0",
+    "pac-proxy-agent": "^7.2.0",
     "pinia": "^3.0.4",
+    "qrcode": "^1.5.4",
+    "safe-decode-uri-component": "^1.2.1",
+    "tunnel": "^0.0.6",
     "vue": "^3.5.34",
-    "vue-router": "^4.6.4"
+    "vue-router": "^4.6.4",
+    "xml2js": "^0.6.2",
+    "yargs": "^18.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.6",

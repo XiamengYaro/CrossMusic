@@ -3,7 +3,7 @@
     <div class="modal-container">
       <div class="modal-header">
         <div class="welcome-icon"><Icon name="music" :size="48" /></div>
-        <h2>CloudMusic for macOS</h2>
+        <h2>CrossMusic</h2>
         <p class="subtitle">欢迎使用，请先配置 API 服务</p>
       </div>
 
@@ -93,16 +93,81 @@
           </button>
         </div>
 
-        <!-- Step 2: QR Login -->
+        <!-- Step 2: Login -->
         <div v-if="step === 2" class="step-content">
-          <p class="login-tip">请使用网易云音乐 App 扫描二维码登录</p>
-          <div class="qr-container">
-            <img v-if="qrImg" :src="qrImg" class="qr-image" alt="QR Code" />
-            <div v-else class="qr-loading">
-              <span class="spinner"></span>
-            </div>
+          <!-- Login Method Tabs -->
+          <div class="login-tabs">
+            <button class="tab-btn" :class="{ active: loginMode === 'qr' }" @click="switchLoginMode('qr')">扫码登录</button>
+            <button class="tab-btn" :class="{ active: loginMode === 'phone' }" @click="switchLoginMode('phone')">密码登录</button>
+            <button class="tab-btn" :class="{ active: loginMode === 'email' }" @click="switchLoginMode('email')">邮箱登录</button>
+            <button class="tab-btn" :class="{ active: loginMode === 'captcha' }" @click="switchLoginMode('captcha')">验证码</button>
           </div>
-          <p v-if="qrStatus" class="qr-status">{{ qrStatus }}</p>
+
+          <!-- QR Login -->
+          <div v-if="loginMode === 'qr'" class="login-content">
+            <p class="login-tip">请使用网易云音乐 App 扫描二维码登录</p>
+            <div class="qr-container">
+              <img v-if="qrImg" :src="qrImg" class="qr-image" alt="QR Code" />
+              <div v-else class="qr-loading">
+                <span class="spinner"></span>
+              </div>
+            </div>
+            <p v-if="qrStatus" class="qr-status">{{ qrStatus }}</p>
+            <button v-if="qrExpired" class="btn-primary" @click="refreshQr">刷新二维码</button>
+          </div>
+
+          <!-- Phone + Password Login -->
+          <div v-if="loginMode === 'phone'" class="login-content">
+            <label class="input-label">手机号</label>
+            <input v-model="phone" type="text" class="input-field" placeholder="请输入手机号" />
+            <label class="input-label">密码</label>
+            <input v-model="password" type="password" class="input-field" placeholder="请输入密码" @keyup.enter="doPhoneLogin" />
+            <p v-if="phoneStatus" class="login-status" :class="phoneStatus.includes('成功') ? 'status-success' : 'status-error'">{{ phoneStatus }}</p>
+            <button class="btn-primary" :disabled="!phone || !password || phoneLoading" @click="doPhoneLogin">
+              <span v-if="phoneLoading" class="spinner"></span>
+              <span v-else>登录</span>
+            </button>
+          </div>
+
+          <!-- Email Login -->
+          <div v-if="loginMode === 'email'" class="login-content">
+            <label class="input-label">邮箱</label>
+            <input v-model="email" type="email" class="input-field" placeholder="请输入 163 网易邮箱" />
+            <label class="input-label">密码</label>
+            <input v-model="emailPassword" type="password" class="input-field" placeholder="请输入密码" @keyup.enter="doEmailLogin" />
+            <p v-if="emailStatus" class="login-status" :class="emailStatus.includes('成功') ? 'status-success' : 'status-error'">{{ emailStatus }}</p>
+            <button class="btn-primary" :disabled="!email || !emailPassword || emailLoading" @click="doEmailLogin">
+              <span v-if="emailLoading" class="spinner"></span>
+              <span v-else>登录</span>
+            </button>
+          </div>
+
+          <!-- Captcha Login -->
+          <div v-if="loginMode === 'captcha'" class="login-content">
+            <label class="input-label">手机号</label>
+            <input v-model="captchaPhone" type="text" class="input-field" placeholder="请输入手机号" />
+            <label class="input-label">验证码</label>
+            <div class="captcha-row">
+              <input v-model="captchaCode" type="text" class="input-field captcha-input" placeholder="请输入验证码" @keyup.enter="doCaptchaLogin" />
+              <button class="btn-send-captcha" :disabled="captchaCooldown > 0 || !captchaPhone" @click="sendCaptchaCode">
+                {{ captchaCooldown > 0 ? `${captchaCooldown}s` : '获取验证码' }}
+              </button>
+            </div>
+            <p v-if="captchaStatus" class="login-status" :class="captchaStatus.includes('成功') ? 'status-success' : 'status-error'">{{ captchaStatus }}</p>
+            <button class="btn-primary" :disabled="!captchaPhone || !captchaCode || captchaLoading" @click="doCaptchaLogin">
+              <span v-if="captchaLoading" class="spinner"></span>
+              <span v-else>登录</span>
+            </button>
+          </div>
+
+          <!-- Guest Login -->
+          <div class="guest-login">
+            <button class="btn-ghost" @click="doGuestLogin" :disabled="guestLoading">
+              <span v-if="guestLoading" class="spinner"></span>
+              <span v-else>游客模式体验</span>
+            </button>
+          </div>
+
           <button class="btn-secondary" @click="skipLogin">稍后登录</button>
         </div>
       </div>
@@ -115,7 +180,11 @@ import { ref } from 'vue'
 import { useSettingStore } from '@/stores/setting'
 import { useUserStore } from '@/stores/user'
 import { testConnection, setBaseURL } from '@/api/request'
-import { getLoginQrKey, createLoginQr, checkLoginQr, getAccountInfo } from '@/api/user'
+import {
+  getLoginQrKey, createLoginQr, checkLoginQr, getAccountInfo,
+  loginByPhone, loginByEmail, loginAnonymously,
+  sendCaptcha, verifyCaptcha, loginByCaptcha,
+} from '@/api/user'
 import { selectDirectory } from '@/utils/tauri-api'
 import Icon from '@/components/icons/Icon.vue'
 
@@ -131,8 +200,35 @@ const status = ref('')
 const errorMsg = ref('')
 const qrImg = ref('')
 const qrStatus = ref('')
+const qrExpired = ref(false)
 let qrKey = ''
 let pollTimer = null
+
+// 登录模式
+const loginMode = ref('qr')
+
+// 手机号密码登录状态
+const phone = ref('')
+const password = ref('')
+const phoneStatus = ref('')
+const phoneLoading = ref(false)
+
+// 邮箱登录状态
+const email = ref('')
+const emailPassword = ref('')
+const emailStatus = ref('')
+const emailLoading = ref(false)
+
+// 验证码登录状态
+const captchaPhone = ref('')
+const captchaCode = ref('')
+const captchaStatus = ref('')
+const captchaLoading = ref(false)
+const captchaCooldown = ref(0)
+let captchaTimer = null
+
+// 游客登录状态
+const guestLoading = ref(false)
 
 async function handleContinue() {
   // 保存下载目录
@@ -148,7 +244,7 @@ async function handleContinue() {
     settingStore.setApiMode('builtin')
     setTimeout(() => {
       step.value = 2
-      startQrLogin()
+      refreshQr()
     }, 300)
   } else {
     await testAndContinue()
@@ -166,7 +262,7 @@ async function testAndContinue() {
     settingStore.setApiMode('external')
     setTimeout(() => {
       step.value = 2
-      startQrLogin()
+      refreshQr()
     }, 500)
   } catch (e) {
     status.value = 'error'
@@ -174,7 +270,44 @@ async function testAndContinue() {
   }
 }
 
-async function startQrLogin() {
+async function browseDir() {
+  const dir = await selectDirectory()
+  if (dir) downloadDir.value = dir
+}
+
+function skipLogin() {
+  if (pollTimer) clearInterval(pollTimer)
+  emit('close')
+}
+
+function switchLoginMode(mode) {
+  loginMode.value = mode
+  phoneStatus.value = ''
+  emailStatus.value = ''
+  captchaStatus.value = ''
+  if (mode === 'qr' && !qrImg.value) {
+    refreshQr()
+  }
+}
+
+function getErrorMessage(res) {
+  const code = res?.code
+  const msg = res?.message || res?.msg || ''
+  if (code === 400) return '请求参数错误'
+  if (code === 501) return '需要验证码登录'
+  if (code === 502) return '验证码错误'
+  if (code === 503) return '账号或密码错误'
+  if (code === 504) return '验证码已过期'
+  if (code === 505) return '发送验证码太频繁'
+  if (code === 509) return '登录过于频繁'
+  if (msg) return msg
+  return '登录失败，请重试'
+}
+
+async function refreshQr() {
+  qrExpired.value = false
+  qrImg.value = ''
+  qrStatus.value = ''
   try {
     const keyRes = await getLoginQrKey()
     qrKey = keyRes.data.unikey
@@ -182,7 +315,7 @@ async function startQrLogin() {
     qrImg.value = qrRes.data.qrimg
     pollQrStatus()
   } catch (e) {
-    qrStatus.value = '获取二维码失败，请重试'
+    qrStatus.value = '获取二维码失败，请检查 API 地址'
   }
 }
 
@@ -194,6 +327,7 @@ function pollQrStatus() {
       const code = res.code
       if (code === 800) {
         qrStatus.value = '二维码已过期，请刷新'
+        qrExpired.value = true
         clearInterval(pollTimer)
       } else if (code === 801) {
         qrStatus.value = '等待扫码...'
@@ -202,21 +336,7 @@ function pollQrStatus() {
       } else if (code === 803) {
         qrStatus.value = '登录成功！'
         clearInterval(pollTimer)
-        const cookie = res.cookie
-        if (cookie) {
-          userStore.setLoginData(cookie, null, null)
-        }
-        try {
-          const accountRes = await getAccountInfo()
-          if (accountRes.account && accountRes.profile) {
-            userStore.setLoginData(null, accountRes.profile, accountRes.account)
-          }
-        } catch (e) {
-          console.error('获取账号信息失败:', e)
-        }
-        setTimeout(() => {
-          emit('close')
-        }, 800)
+        await handleLoginSuccess(res.cookie)
       }
     } catch (e) {
       console.error('检查二维码状态失败:', e)
@@ -224,14 +344,126 @@ function pollQrStatus() {
   }, 2000)
 }
 
-function skipLogin() {
-  if (pollTimer) clearInterval(pollTimer)
-  emit('close')
+async function doPhoneLogin() {
+  if (!phone.value || !password.value) return
+  phoneLoading.value = true
+  phoneStatus.value = ''
+  try {
+    const res = await loginByPhone(phone.value, password.value)
+    if (res.code === 200 || res.code === 301) {
+      phoneStatus.value = '登录成功！'
+      const cookie = res.cookie || res.data?.cookie || null
+      await handleLoginSuccess(cookie)
+    } else {
+      phoneStatus.value = getErrorMessage(res)
+    }
+  } catch (e) {
+    phoneStatus.value = e.message || '登录失败'
+  } finally {
+    phoneLoading.value = false
+  }
 }
 
-async function browseDir() {
-  const dir = await selectDirectory()
-  if (dir) downloadDir.value = dir
+async function doEmailLogin() {
+  if (!email.value || !emailPassword.value) return
+  emailLoading.value = true
+  emailStatus.value = ''
+  try {
+    const res = await loginByEmail(email.value, emailPassword.value)
+    if (res.code === 200 || res.code === 301) {
+      emailStatus.value = '登录成功！'
+      const cookie = res.cookie || res.data?.cookie || null
+      await handleLoginSuccess(cookie)
+    } else {
+      emailStatus.value = getErrorMessage(res)
+    }
+  } catch (e) {
+    emailStatus.value = e.message || '邮箱登录失败'
+  } finally {
+    emailLoading.value = false
+  }
+}
+
+async function sendCaptchaCode() {
+  if (!captchaPhone.value) return
+  captchaStatus.value = ''
+  try {
+    await sendCaptcha(captchaPhone.value)
+    captchaStatus.value = '验证码已发送，请查收'
+    captchaCooldown.value = 60
+    captchaTimer = setInterval(() => {
+      captchaCooldown.value--
+      if (captchaCooldown.value <= 0) {
+        clearInterval(captchaTimer)
+      }
+    }, 1000)
+  } catch (e) {
+    captchaStatus.value = e.message || '发送验证码失败'
+  }
+}
+
+async function doCaptchaLogin() {
+  if (!captchaPhone.value || !captchaCode.value) return
+  captchaLoading.value = true
+  captchaStatus.value = ''
+  try {
+    const verifyRes = await verifyCaptcha(captchaPhone.value, captchaCode.value)
+    if (verifyRes.code !== 200) {
+      captchaStatus.value = getErrorMessage(verifyRes)
+      captchaLoading.value = false
+      return
+    }
+    const res = await loginByCaptcha(captchaPhone.value, captchaCode.value)
+    if (res.code === 200 || res.code === 301) {
+      captchaStatus.value = '登录成功！'
+      const cookie = res.cookie || res.data?.cookie || null
+      await handleLoginSuccess(cookie)
+    } else {
+      captchaStatus.value = getErrorMessage(res)
+    }
+  } catch (e) {
+    captchaStatus.value = e.message || '验证码登录失败'
+  } finally {
+    captchaLoading.value = false
+  }
+}
+
+async function doGuestLogin() {
+  guestLoading.value = true
+  try {
+    const res = await loginAnonymously()
+    if (res.code === 200 && res.cookie) {
+      userStore.setLoginData(res.cookie, null, null)
+      try {
+        const accountRes = await getAccountInfo()
+        if (accountRes.account && accountRes.profile) {
+          userStore.setLoginData(null, accountRes.profile, accountRes.account)
+        }
+      } catch (e) {
+        console.warn('游客获取账户信息失败:', e)
+      }
+      setTimeout(() => { emit('close') }, 500)
+    }
+  } catch (e) {
+    console.error('游客登录失败:', e)
+  } finally {
+    guestLoading.value = false
+  }
+}
+
+async function handleLoginSuccess(cookie) {
+  if (cookie) {
+    userStore.setLoginData(cookie, null, null)
+  }
+  try {
+    const accountRes = await getAccountInfo()
+    if (accountRes.account && accountRes.profile) {
+      userStore.setLoginData(null, accountRes.profile, accountRes.account)
+    }
+  } catch (e) {
+    console.error('获取账号信息失败:', e)
+  }
+  setTimeout(() => { emit('close') }, 500)
 }
 </script>
 
@@ -552,5 +784,103 @@ async function browseDir() {
   text-align: center;
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+.login-tabs {
+  display: flex;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  margin-bottom: 16px;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 8px 4px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: transparent;
+  transition: all 0.2s;
+}
+
+.tab-btn.active {
+  background: var(--accent);
+  color: white;
+}
+
+.login-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.login-status {
+  font-size: 13px;
+  text-align: center;
+}
+
+.status-success {
+  color: var(--green);
+}
+
+.status-error {
+  color: var(--accent);
+}
+
+.captcha-row {
+  display: flex;
+  gap: 8px;
+}
+
+.captcha-input {
+  flex: 1;
+}
+
+.btn-send-captcha {
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--accent);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  white-space: nowrap;
+  transition: all 0.2s;
+  border: 1px solid var(--border-color);
+}
+
+.btn-send-captcha:hover:not(:disabled) {
+  background: var(--accent-light);
+}
+
+.btn-send-captcha:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: var(--text-secondary);
+}
+
+.guest-login {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.btn-ghost {
+  padding: 8px 24px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.btn-ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

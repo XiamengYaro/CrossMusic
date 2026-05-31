@@ -128,7 +128,7 @@ const defaultKeyword = ref('')
 
 const menuItems = [
   { label: '推荐', icon: 'home', route: '/recommend' },
-  { label: '私人 FM', icon: 'radio', route: '/fm' },
+  { label: '每日推荐', icon: 'calendar', route: '/daily' },
   { label: '我喜欢的音乐', icon: 'heart', route: '/liked' },
   { label: '音乐云盘', icon: 'cloud', route: '/cloud' },
   { label: '最近播放', icon: 'clock', route: '/recent' },
@@ -139,7 +139,13 @@ const menuItems = [
 const currentRoute = computed(() => route.path)
 
 function navigate(path) { router.push(path) }
-function handleUserClick() { if (!userStore.isLoggedIn) emit('show-login') }
+function handleUserClick() {
+  if (!userStore.isLoggedIn) {
+    emit('show-login')
+  } else {
+    router.push({ path: '/settings', hash: '#account' })
+  }
+}
 
 function selectSearch(kw) {
   searchKeyword.value = kw

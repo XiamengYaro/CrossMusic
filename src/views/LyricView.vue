@@ -273,7 +273,11 @@ const isPlaying = computed(() => playerStore.isPlaying)
 const currentTime = computed(() => playerStore.currentTime)
 const duration = computed(() => playerStore.duration)
 const progress = computed(() => playerStore.progress)
-const artistNames = computed(() => currentSong.value?.ar ? currentSong.value.ar.map(a => a.name).join(' / ') : '未知歌手')
+const artistNames = computed(() => {
+  if (!currentSong.value) return '未知歌手'
+  const artists = currentSong.value.ar || currentSong.value.artists || []
+  return artists.length > 0 ? artists.map(a => a.name).join(' / ') : '未知歌手'
+})
 
 function toggleSettings() {
   showSettings.value = !showSettings.value

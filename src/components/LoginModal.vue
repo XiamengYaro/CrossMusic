@@ -267,7 +267,17 @@ async function doGuestLogin() {
   try {
     const res = await loginAnonymously()
     if (res.code === 200 && res.cookie) {
-      await handleLoginSuccess(res.cookie)
+      userStore.setLoginData(res.cookie, null, null)
+      // 游客模式获取账户信息
+      try {
+        const accountRes = await getAccountInfo()
+        if (accountRes.account && accountRes.profile) {
+          userStore.setLoginData(null, accountRes.profile, accountRes.account)
+        }
+      } catch (e) {
+        console.warn('游客获取账户信息失败:', e)
+      }
+      setTimeout(() => { emit('close') }, 500)
     }
   } catch (e) {
     console.error('游客登录失败:', e)

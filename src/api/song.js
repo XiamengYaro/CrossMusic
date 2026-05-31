@@ -50,6 +50,26 @@ export function getRecommendSongs() {
   return request.get('/recommend/songs')
 }
 
+/** 获取每日推荐歌单 */
+export function getRecommendResource() {
+  return request.get('/recommend/resource')
+}
+
+/** 每日推荐歌曲-不感兴趣 */
+export function dislikeRecommendSong(id) {
+  return request.get('/recommend/songs/dislike', { params: { id } })
+}
+
+/** 获取历史日推可用日期列表 */
+export function getHistoryRecommendDates() {
+  return request.get('/history/recommend/songs')
+}
+
+/** 获取历史日推详情数据 */
+export function getHistoryRecommendDetail(date) {
+  return request.get('/history/recommend/songs/detail', { params: { date } })
+}
+
 /** 私人 FM */
 export function getPersonalFm() {
   return request.get('/personal_fm')

@@ -46,9 +46,9 @@ const routes = [
     component: () => import('@/views/Search.vue'),
   },
   {
-    path: '/fm',
-    name: 'PersonalFM',
-    component: () => import('@/views/PersonalFM.vue'),
+    path: '/daily',
+    name: 'DailyRecommend',
+    component: () => import('@/views/DailyRecommend.vue'),
   },
   {
     path: '/local',

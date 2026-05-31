@@ -4,10 +4,13 @@
 
     <!-- Daily Recommend -->
     <div v-if="userStore.isLoggedIn && dailySongs.length" class="section">
-      <h2 class="section-title">每日推荐</h2>
+      <div class="section-header">
+        <h2 class="section-title">每日推荐</h2>
+        <button class="btn-more" @click="goDailyRecommend">更多</button>
+      </div>
       <div class="song-grid">
         <div
-          v-for="song in dailySongs.slice(0, 12)"
+          v-for="song in dailySongs.slice(0, 10)"
           :key="song.id"
           class="song-card"
           @click="playSong(song, dailySongs)"
@@ -21,7 +24,9 @@
 
     <!-- Recommended Playlists -->
     <div class="section">
-      <h2 class="section-title">推荐歌单</h2>
+      <div class="section-header">
+        <h2 class="section-title">推荐歌单</h2>
+      </div>
       <div class="playlist-grid">
         <div
           v-for="pl in playlists"
@@ -40,7 +45,9 @@
 
     <!-- New Songs -->
     <div class="section">
-      <h2 class="section-title">新歌速递</h2>
+      <div class="section-header">
+        <h2 class="section-title">新歌速递</h2>
+      </div>
       <div class="new-songs-grid">
         <div
           v-for="item in newSongs.slice(0, 12)"
@@ -98,6 +105,7 @@ onMounted(async () => {
 
 function playSong(song, list) { playerStore.playSong(song, list) }
 function goPlaylist(id) { router.push(`/playlist/${id}`) }
+function goDailyRecommend() { router.push('/daily') }
 </script>
 
 <style scoped>
@@ -105,7 +113,10 @@ function goPlaylist(id) { router.push(`/playlist/${id}`) }
 .page-title { font-size: 28px; font-weight: 700; margin-bottom: 24px; }
 
 .section { margin-bottom: 36px; }
-.section-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
+.section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.section-title { font-size: 20px; font-weight: 600; }
+.btn-more { font-size: 13px; color: var(--text-secondary); padding: 4px 12px; border-radius: var(--radius-sm); background: rgba(255,255,255,0.06); transition: all 0.15s; }
+.btn-more:hover { background: rgba(255,255,255,0.12); color: var(--text-primary); }
 
 .song-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
 .song-card { cursor: pointer; transition: transform 0.2s; }

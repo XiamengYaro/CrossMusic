@@ -57,7 +57,7 @@
     </div>
 
     <!-- Account Settings -->
-    <div class="setting-section">
+    <div id="account" class="setting-section">
       <h2 class="section-title"><Icon name="user" :size="16" /> 账号</h2>
       <div v-if="userStore.isLoggedIn" class="account-section">
         <div class="account-info">
@@ -132,8 +132,11 @@
       <div class="about-section">
         <div class="about-logo"><Icon name="music" :size="24" /></div>
         <div class="about-info">
-          <span class="about-title">CloudMusic for macOS</span>
-          <span class="about-version">版本 1.0.0</span>
+          <span class="about-title">CrossMusic</span>
+          <span class="about-version">版本 v0.0.6</span>
+          <span class="about-author">作者: XiamengYaro</span>
+          <a href="https://github.com/XiamengYaro/CrossMusic" target="_blank" class="about-link">GitHub: https://github.com/XiamengYaro/CrossMusic</a>
+          <span class="about-license">许可证: MIT License</span>
         </div>
       </div>
     </div>
@@ -141,7 +144,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { useSettingStore } from '@/stores/setting'
 import { useUserStore } from '@/stores/user'
 import { usePlayerStore } from '@/stores/player'
@@ -152,6 +156,7 @@ import Icon from '@/components/icons/Icon.vue'
 const settingStore = useSettingStore()
 const userStore = useUserStore()
 const playerStore = usePlayerStore()
+const route = useRoute()
 
 const apiUrl = ref(settingStore.apiBaseUrl)
 const apiStatus = ref('')
@@ -255,7 +260,18 @@ async function handleReset() {
   setTimeout(() => { location.reload() }, 1000)
 }
 
-onMounted(() => { refreshStatus() })
+onMounted(() => {
+  refreshStatus()
+  // 滚动到锚点位置
+  if (route.hash) {
+    nextTick(() => {
+      const el = document.querySelector(route.hash)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    })
+  }
+})
 </script>
 
 <style scoped>
@@ -320,6 +336,10 @@ onMounted(() => { refreshStatus() })
 .about-info { display: flex; flex-direction: column; }
 .about-title { font-size: 15px; font-weight: 600; }
 .about-version { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+.about-author { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+.about-link { font-size: 12px; color: var(--accent); text-decoration: none; margin-top: 4px; }
+.about-link:hover { text-decoration: underline; }
+.about-license { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
 
 .api-server-control { margin-top: 12px; padding: 12px 14px; background: rgba(128,128,128,0.06); border: 1px solid var(--border-light); border-radius: 8px; }
 .api-server-row { display: flex; align-items: center; justify-content: space-between; }

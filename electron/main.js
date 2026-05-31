@@ -135,11 +135,11 @@ function createTray() {
   const iconPath = path.join(__dirname, '../build/icon.png')
   tray = new Tray(iconPath)
   const contextMenu = Menu.buildFromTemplate([
-    { label: '显示 CloudMusic', click: () => { if (mainWindow) mainWindow.show() } },
+    { label: '显示 CrossMusic', click: () => { if (mainWindow) mainWindow.show() } },
     { type: 'separator' },
     { label: '退出', click: () => { app.isQuitting = true; app.quit() } },
   ])
-  tray.setToolTip('CloudMusic')
+  tray.setToolTip('CrossMusic')
   tray.setContextMenu(contextMenu)
   tray.on('double-click', () => { if (mainWindow) mainWindow.show() })
 }
@@ -164,13 +164,20 @@ app.whenReady().then(async () => {
   writeLog('INFO', 'Application started')
 })
 
+app.on('before-quit', () => {
+  app.isQuitting = true
+})
+
 app.on('window-all-closed', () => {
   if (apiServer && apiServer.server) apiServer.server.close()
-  if (!isMac) { app.isQuitting = true; app.quit() }
+  if (!isMac) app.quit()
 })
 
 app.on('activate', async () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
+  if (mainWindow) {
+    mainWindow.show()
+    mainWindow.focus()
+  } else {
     if (!apiServer) apiServer = await startApiServer()
     createWindow()
   }
