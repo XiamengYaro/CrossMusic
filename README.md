@@ -35,7 +35,6 @@
 | **Vite** | 构建工具 |
 | **Pinia** | 状态管理 |
 | **Vue Router** | 路由管理 |
-| **Express** | 内置 API 服务 |
 | **NeteaseCloudMusicApi** | 网易云音乐 API 服务端 |
 
 ## 📦 项目结构
@@ -79,8 +78,6 @@ maccloudmusic/
 │       ├── Settings.vue        # 设置页
 │       └── LyricView.vue       # 歌词视图
 ├── build/              # 应用图标资源
-├── dist/               # Vite 构建产物
-├── release/            # 打包输出目录
 ├── package.json
 └── vite.config.js
 ```
@@ -138,19 +135,11 @@ npm run preview         # 预览构建产物
 
 应用启动时会自动在 `127.0.0.1:3000` 启动内置的 NeteaseCloudMusicApi 服务。如果该端口已被占用，则跳过内置服务（假设服务已在运行）。
 
-### Tauri 支持
 
-项目同时包含 Tauri 配置（`src-tauri/`），可用于构建更轻量的原生桌面应用：
-
-```bash
-npm run tauri:dev       # Tauri 开发模式
-npm run tauri:build     # Tauri 构建
-```
 
 ## 📝 注意事项
 
 - 构建产物输出到 `release/` 目录
-- macOS 构建时 `identity` 设置为 `null`，跳过代码签名
 - Windows 构建默认目标架构为 x64
 - 应用数据存储在本地，支持记住登录状态和播放设置
 
