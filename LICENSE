@@ -76,9 +76,9 @@ received such components are set forth below.
    https://github.com/electron-userland/electron-builder
 
 10. NeteaseCloudMusicApi Enhanced
-    Copyright (c) 2013-2022 Binaryify, MoeFurina and contributors
+    Copyright (c) 2013-2022 Binaryify
     License: MIT
-    https://github.com/Binaryify/NeteaseCloudMusicApi
+    https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced
 
 11. @neteasecloudmusicapienhanced/unblockmusic-utils
     License: MIT

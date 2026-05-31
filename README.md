@@ -1,4 +1,4 @@
-# CrossMusic - 网易云音乐桌面客户端
+# CrossMusic - 第三方网易云音乐桌面客户端
 
 基于 **Electron + Vue 3 + Vite** 构建的网易云音乐桌面客户端，支持 macOS、Windows、Linux 多平台。
 
