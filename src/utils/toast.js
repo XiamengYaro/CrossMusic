@@ -12,5 +12,7 @@ export function registerToast(showFn) {
 export function showToast(message, type = 'info', duration = 2500) {
   if (_showFn) {
     _showFn(message, type, duration)
+  } else {
+    console.warn('[toast] showToast called before registerToast')
   }
 }

@@ -141,39 +141,28 @@
         <div class="about-logo"><Icon name="music" :size="24" /></div>
         <div class="about-info">
           <span class="about-title">CrossMusic</span>
-          <span class="about-version">版本 v{{ currentVersion }}</span>
-          <span class="about-author">作者: XiamengYaro</span>
+          <span class="about-version">版本 {{ appVersion }}</span>
           <a href="https://github.com/XiamengYaro/CrossMusic" target="_blank" class="about-link">GitHub: https://github.com/XiamengYaro/CrossMusic</a>
           <span class="about-license">许可证: MIT License</span>
         </div>
       </div>
-      <div class="update-section">
-        <button class="btn-update" @click="checkUpdate" :disabled="updateChecking">
-          <Icon v-if="updateChecking" name="spinner" :size="14" class="spinner" />
-          <span v-else>检查更新</span>
-        </button>
-        <div v-if="updateStatus" class="update-status" :class="updateStatusClass">
-          {{ updateStatus }}
-        </div>
-        <div v-if="hasUpdate" class="update-info">
-          <p>发现新版本 v{{ latestVersion }}</p>
-          <a v-if="downloadUrl" :href="downloadUrl" target="_blank" class="btn-download-update">下载更新</a>
-        </div>
-      </div>
     </div>
+    
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useSettingStore } from '@/stores/setting'
 import { useUserStore } from '@/stores/user'
 import { usePlayerStore } from '@/stores/player'
 import { testConnection, setBaseURL } from '@/api/request'
 import { checkApiStatus, startApiServer, stopApiServer, selectDirectory, readLog, clearLogs, clearAllData, resetApp } from '@/utils/tauri-api'
-import { checkForUpdates } from '@/api/update'
 import Icon from '@/components/icons/Icon.vue'
+import pkg from '../../package.json'
+
+const appVersion = `v${pkg.version}`
 
 const settingStore = useSettingStore()
 const userStore = useUserStore()
@@ -194,14 +183,13 @@ const debugStatusClass = ref('')
 const showLogContent = ref(false)
 const logContent = ref('')
 
-// 更新相关
-const currentVersion = ref('0.0.6')
-const updateChecking = ref(false)
-const updateStatus = ref('')
-const updateStatusClass = ref('')
-const hasUpdate = ref(false)
-const latestVersion = ref('')
-const downloadUrl = ref('')
+const pendingTimers = new Set()
+function managedSetTimeout(fn, ms) {
+  const id = setTimeout(() => { pendingTimers.delete(id); fn() }, ms)
+  pendingTimers.add(id)
+  return id
+}
+onUnmounted(() => { for (const id of pendingTimers) clearTimeout(id); pendingTimers.clear() })
 
 const qualityOptions = computed(() => playerStore.availableQualities)
 const modeOptions = [
@@ -222,7 +210,7 @@ async function switchApiMode(mode) {
   } else {
     apiUrl.value = settingStore.apiBaseUrl || ''
   }
-  setTimeout(() => { apiStatus.value = '' }, 3000)
+  managedSetTimeout(() => { apiStatus.value = '' }, 3000)
 }
 
 async function saveApiUrl() {
@@ -237,18 +225,18 @@ async function saveApiUrl() {
     apiStatus.value = '✗ ' + (e.message || '连接失败')
     apiStatusClass.value = 'status-err'
   }
-  setTimeout(() => { apiStatus.value = '' }, 3000)
+  managedSetTimeout(() => { apiStatus.value = '' }, 3000)
 }
 
 async function refreshStatus() { apiLoading.value = true; try { apiRunning.value = await checkApiStatus() } catch { apiRunning.value = false } finally { apiLoading.value = false } }
 
 function savePort() {
   const port = String(apiPortInput.value).trim()
-  if (port && port !== settingStore.apiPort) { settingStore.setApiPort(port); portSaved.value = true; setTimeout(() => { portSaved.value = false }, 1500) }
+  if (port && port !== settingStore.apiPort) { settingStore.setApiPort(port); portSaved.value = true; managedSetTimeout(() => { portSaved.value = false }, 1500) }
 }
 function saveDownloadDir() {
   const dir = downloadDir.value.trim()
-  if (dir !== settingStore.downloadDir) { settingStore.setDownloadDir(dir); dirSaved.value = true; setTimeout(() => { dirSaved.value = false }, 1500) }
+  if (dir !== settingStore.downloadDir) { settingStore.setDownloadDir(dir); dirSaved.value = true; managedSetTimeout(() => { dirSaved.value = false }, 1500) }
 }
 async function browseDir() { const dir = await selectDirectory(); if (dir) { downloadDir.value = dir; saveDownloadDir() } }
 
@@ -260,14 +248,14 @@ async function startServer() {
     settingStore.setApiBaseUrl(newBaseUrl); setBaseURL(newBaseUrl)
     apiRunning.value = true; apiStatus.value = '✓ ' + (msg || '已启动'); apiStatusClass.value = 'status-ok'
   } catch (e) { apiStatus.value = '✗ 启动失败: ' + (e || '未知错误'); apiStatusClass.value = 'status-err' }
-  finally { apiLoading.value = false; setTimeout(() => { apiStatus.value = '' }, 4000) }
+  finally { apiLoading.value = false; managedSetTimeout(() => { apiStatus.value = '' }, 4000) }
 }
 
 async function stopServer() {
   apiLoading.value = true
   try { await stopApiServer(); apiRunning.value = false; apiStatus.value = '已停止'; apiStatusClass.value = 'status-info' }
   catch { apiStatus.value = '✗ 停止失败'; apiStatusClass.value = 'status-err' }
-  finally { apiLoading.value = false; setTimeout(() => { apiStatus.value = '' }, 4000) }
+  finally { apiLoading.value = false; managedSetTimeout(() => { apiStatus.value = '' }, 4000) }
 }
 
 function logout() { userStore.clearLoginData(); playerStore.clearPlaylist() }
@@ -277,44 +265,24 @@ async function handleViewLog() {
     const log = await readLog()
     logContent.value = log || '(无日志)'
     showLogContent.value = true
-  } catch { debugStatus.value = '读取日志失败'; debugStatusClass.value = 'status-err'; setTimeout(() => { debugStatus.value = '' }, 3000) }
+  } catch { debugStatus.value = '读取日志失败'; debugStatusClass.value = 'status-err'; managedSetTimeout(() => { debugStatus.value = '' }, 3000) }
 }
 
 async function handleClearLogs() {
-  await clearLogs(); debugStatus.value = '✓ 日志已清除'; debugStatusClass.value = 'status-ok'; setTimeout(() => { debugStatus.value = '' }, 2000)
+  try { await clearLogs(); debugStatus.value = '✓ 日志已清除'; debugStatusClass.value = 'status-ok' }
+  catch { debugStatus.value = '✗ 清除日志失败'; debugStatusClass.value = 'status-err' }
+  managedSetTimeout(() => { debugStatus.value = '' }, 2000)
 }
 async function handleClearData() {
-  await clearAllData(); debugStatus.value = '✓ 存储已清除'; debugStatusClass.value = 'status-ok'; setTimeout(() => { debugStatus.value = '' }, 2000)
+  try { await clearAllData(); debugStatus.value = '✓ 存储已清除'; debugStatusClass.value = 'status-ok' }
+  catch { debugStatus.value = '✗ 清除存储失败'; debugStatusClass.value = 'status-err' }
+  managedSetTimeout(() => { debugStatus.value = '' }, 2000)
 }
 async function handleReset() {
-  await resetApp(); localStorage.clear(); debugStatus.value = '✓ 已恢复出厂设置'; debugStatusClass.value = 'status-ok'
-  setTimeout(() => { location.reload() }, 1000)
-}
-
-async function checkUpdate() {
-  updateChecking.value = true
-  updateStatus.value = '正在检查更新...'
-  updateStatusClass.value = 'status-info'
-  hasUpdate.value = false
-  
   try {
-    const result = await checkForUpdates()
-    if (result.hasUpdate) {
-      hasUpdate.value = true
-      latestVersion.value = result.latestVersion
-      downloadUrl.value = result.downloadUrl
-      updateStatus.value = `发现新版本 v${result.latestVersion}`
-      updateStatusClass.value = 'status-success'
-    } else {
-      updateStatus.value = '当前已是最新版本'
-      updateStatusClass.value = 'status-ok'
-    }
-  } catch (e) {
-    updateStatus.value = e.message || '检查更新失败'
-    updateStatusClass.value = 'status-err'
-  } finally {
-    updateChecking.value = false
-  }
+    await resetApp(); localStorage.clear(); debugStatus.value = '✓ 已恢复出厂设置'; debugStatusClass.value = 'status-ok'
+    managedSetTimeout(() => { location.reload() }, 1000)
+  } catch { debugStatus.value = '✗ 恢复出厂失败'; debugStatusClass.value = 'status-err'; managedSetTimeout(() => { debugStatus.value = '' }, 2000) }
 }
 
 onMounted(() => {
@@ -393,47 +361,9 @@ onMounted(() => {
 .about-info { display: flex; flex-direction: column; }
 .about-title { font-size: 15px; font-weight: 600; }
 .about-version { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
-.about-author { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
 .about-link { font-size: 12px; color: var(--accent); text-decoration: none; margin-top: 4px; }
 .about-link:hover { text-decoration: underline; }
 .about-license { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
-
-.update-section { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
-.btn-update { 
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 16px; 
-  background: var(--accent); 
-  color: white; 
-  border-radius: var(--radius-md); 
-  font-size: 13px; 
-  font-weight: 500; 
-  transition: all 0.15s; 
-  align-self: flex-start;
-}
-.btn-update:hover:not(:disabled) { background: var(--accent-hover); }
-.btn-update:disabled { opacity: 0.5; cursor: not-allowed; }
-.update-status { font-size: 12px; padding: 6px 10px; border-radius: var(--radius-sm); }
-.update-info { 
-  margin-top: 8px; 
-  padding: 12px; 
-  background: rgba(46, 213, 115, 0.06); 
-  border: 1px solid rgba(46, 213, 115, 0.15); 
-  border-radius: var(--radius-md); 
-}
-.update-info p { font-size: 13px; color: var(--text-primary); margin-bottom: 8px; }
-.btn-download-update { 
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 14px; 
-  background: var(--green); 
-  color: white; 
-  border-radius: var(--radius-sm); 
-  font-size: 12px; 
-  text-decoration: none; 
-  transition: all 0.15s;
-}
-.btn-download-update:hover { opacity: 0.9; }
-.spinner { animation: spin 0.6s linear infinite; }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 .api-server-control { margin-top: 12px; padding: 12px 14px; background: rgba(128,128,128,0.06); border: 1px solid var(--border-light); border-radius: 8px; }
 .api-server-row { display: flex; align-items: center; justify-content: space-between; }

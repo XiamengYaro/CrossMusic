@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { getItem, setItem } from '@/utils/storage'
 import { setBaseURL } from '@/api/request'
+import { getMusicDir } from '@/utils/tauri-api'
 
 export const useSettingStore = defineStore('setting', () => {
   const apiBaseUrl = ref(getItem('apiBaseUrl') || '')
@@ -10,9 +11,9 @@ export const useSettingStore = defineStore('setting', () => {
   const isFirstLaunch = ref(!getItem('apiBaseUrl'))
   const downloadDir = ref(getItem('downloadDir') || '')
   const theme = ref(getItem('theme') || 'dark')
-  const debugMode = ref(getItem('debugMode') || false)
+  const debugMode = ref(getItem('debugMode') === true)
   const searchHistory = ref(getItem('searchHistory') || [])
-  const showSongDetail = ref(getItem('showSongDetail') || false)
+  const showSongDetail = ref(getItem('showSongDetail') === true)
 
   // 歌词设置
   const lyricFontSize = ref(getItem('lyricFontSize') || 28)
@@ -75,7 +76,8 @@ export const useSettingStore = defineStore('setting', () => {
       lyricFontSize, lyricActiveFontSize, lyricLineHeight,
       lyricShowTranslation, lyricShowBlurBg, lyricBlurAmount,
       lyricBgOpacity, lyricFontFamily, lyricColor,
-      lyricVerticalOffset, lyricTransFontSize, lyricActiveScale, lyricPassedOpacity
+    lyricVerticalOffset, lyricTransFontSize, lyricActiveScale, lyricPassedOpacity,
+      lyricShowFlowBg
     }
     if (refMap[key]) {
       if (key === 'lyricFontSize') {
@@ -112,13 +114,22 @@ export const useSettingStore = defineStore('setting', () => {
   if (apiBaseUrl.value) setBaseURL(apiBaseUrl.value)
   document.documentElement.setAttribute('data-theme', theme.value)
 
+  // 如果未设置下载目录，获取系统默认音乐目录
+  if (!downloadDir.value) {
+    getMusicDir().then(dir => {
+      if (dir) {
+        downloadDir.value = dir
+        setItem('downloadDir', dir)
+      }
+    }).catch(() => {})
+  }
+
   return {
     apiBaseUrl, apiMode, apiPort, isFirstLaunch, downloadDir, theme, debugMode, searchHistory, showSongDetail,
     setApiBaseUrl, setApiMode, setApiPort, setDownloadDir, setTheme, setDebugMode, setShowSongDetail,
     addSearchHistory, clearSearchHistory,
     lyricFontSize, lyricActiveFontSize, lyricLineHeight, lyricShowTranslation,
     lyricShowBlurBg, lyricBlurAmount, lyricBgOpacity, lyricFontFamily, lyricColor,
-    lyricVerticalOffset, lyricTransFontSize, lyricActiveScale, lyricPassedOpacity,
-    setLyricSetting, lyricFontFamilies, lyricColors,
-  }
+      lyricVerticalOffset, lyricTransFontSize, lyricActiveScale, lyricPassedOpacity
+    }
 })

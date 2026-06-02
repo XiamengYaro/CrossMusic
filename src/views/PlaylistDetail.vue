@@ -71,13 +71,18 @@ async function loadAllTracks(id, batchSize = 500) {
   let offset = 0
   const allSongs = []
   const total = playlist.value?.trackCount || 0
-  while (offset < total) {
+  let iterations = 0
+  const maxIterations = 100
+  while (offset < total && iterations < maxIterations) {
+    iterations++
     try {
       const trackRes = await getPlaylistTrackAll(id, batchSize, offset)
       const tracks = trackRes.songs || []
       if (tracks.length === 0) break
       allSongs.push(...tracks)
+      const prevOffset = offset
       offset += tracks.length
+      if (offset === prevOffset) break
     } catch (e) {
       console.error('加载歌曲失败:', e)
       break

@@ -105,7 +105,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useSettingStore } from '@/stores/setting'
@@ -162,8 +162,11 @@ function doSearch() {
 }
 
 function onSearchBlur() {
-  setTimeout(() => { searchFocused.value = false }, 200)
+  searchBlurTimer = setTimeout(() => { searchFocused.value = false }, 200)
 }
+
+let searchBlurTimer = null
+onUnmounted(() => { if (searchBlurTimer) clearTimeout(searchBlurTimer) })
 
 async function loadDefaultKeyword() {
   try {
@@ -172,16 +175,20 @@ async function loadDefaultKeyword() {
   } catch {}
 }
 
+let playlistsLoading = false
 async function loadPlaylists() {
+  if (playlistsLoading) return
   if (!userStore.isLoggedIn) { playlists.value = []; collectedPlaylists.value = []; return }
   if (!userStore.userId) await userStore.ensureAccountInfo()
   if (!userStore.userId) { playlists.value = []; collectedPlaylists.value = []; return }
+  playlistsLoading = true
   try {
     const res = await getUserPlaylist(userStore.userId, 100, 0)
     const all = Array.isArray(res) ? res : (res.playlist || res.playlists || [])
     playlists.value = all.filter(pl => pl.creator && pl.creator.userId === userStore.userId)
     collectedPlaylists.value = all.filter(pl => pl.creator && pl.creator.userId !== userStore.userId)
   } catch (e) { console.error('获取歌单列表失败:', e) }
+  finally { playlistsLoading = false }
 }
 
 onMounted(() => { loadPlaylists(); loadDefaultKeyword() })

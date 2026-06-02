@@ -12,7 +12,7 @@
         class="artist-card"
         @click="goArtist(artist.id)"
       >
-        <img :src="(artist.picUrl || artist.img1v1Url || '') + '?param=120y120'" class="artist-avatar" />
+        <img :src="`${artist.picUrl || artist.img1v1Url || ''}?param=120y120`" class="artist-avatar" />
         <div class="artist-info">
           <span class="artist-name text-ellipsis">{{ artist.name }}</span>
           <span class="artist-alias text-ellipsis" v-if="artist.alias?.length">{{ artist.alias[0] }}</span>
@@ -25,14 +25,20 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
 import { getSubArtistList } from '@/api/artist'
 import Icon from '@/components/icons/Icon.vue'
 
 const router = useRouter()
+const userStore = useUserStore()
 const artists = ref([])
 const loading = ref(true)
 
 onMounted(async () => {
+  if (!userStore.isLoggedIn) {
+    loading.value = false
+    return
+  }
   try {
     const res = await getSubArtistList(100, 0)
     const list = res.artists || res.data?.artists || []

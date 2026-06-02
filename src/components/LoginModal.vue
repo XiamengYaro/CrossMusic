@@ -90,6 +90,7 @@ import {
   getLoginQrKey, createLoginQr, checkLoginQr,
   loginByPhone, loginByEmail, loginAnonymously,
   sendCaptcha, verifyCaptcha, loginByCaptcha,
+  getAccountInfo,
 } from '@/api/user'
 import Icon from '@/components/icons/Icon.vue'
 
@@ -152,8 +153,7 @@ const guestLoading = ref(false)
 function getErrorMessage(res) {
   const code = res?.code
   const msg = res?.message || res?.msg || ''
-  if (code === 400 || code === 501) return '请求参数错误，请重试'
-  if (code === 400) return '手机号格式错误'
+  if (code === 400) return '请求参数错误，请重试'
   if (code === 501) return '需要验证码登录'
   if (code === 502) return '验证码错误'
   if (code === 503) return '登录失败，账号或密码错误'
@@ -171,15 +171,22 @@ function switchMode(mode) {
   captchaStatus.value = ''
   phoneStatus.value = ''
   emailStatus.value = ''
+  qrStatus.value = ''
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
   if (mode === 'qr' && !qrImg.value) {
     refreshQr()
   }
 }
 
-onMounted(() => { refreshQr() })
+function onKeydown(e) {
+  if (e.key === 'Escape') emit('close')
+}
+
+onMounted(() => { refreshQr(); window.addEventListener('keydown', onKeydown) })
 onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer)
   if (captchaTimer) clearInterval(captchaTimer)
+  window.removeEventListener('keydown', onKeydown)
 })
 
 async function refreshQr() {

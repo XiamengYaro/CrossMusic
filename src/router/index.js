@@ -60,6 +60,10 @@ const routes = [
     name: 'AlbumDetail',
     component: () => import('@/views/AlbumDetail.vue'),
   },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/recommend',
+  },
 ]
 
 const router = createRouter({

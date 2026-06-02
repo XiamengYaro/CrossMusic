@@ -127,7 +127,7 @@ export function getUserFollowMixed(size = 30, cursor = 0, scene = 0) {
 
 /** 获取 VIP 信息 */
 export function getVipInfo(uid) {
-  return request.get('/vip/info', { params: uid ? { uid } : {} })
+  return request.get('/vip/info', { params: uid != null ? { uid } : {} })
 }
 
 /** 每日签到 */

@@ -56,6 +56,7 @@ export function useSpinning(isPlaying, speed = 16) {
       cancelAnimationFrame(rafId)
       rafId = null
     }
+    velocity = 0
   }
 
   return { angle, stop }

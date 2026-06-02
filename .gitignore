@@ -6,7 +6,7 @@ release/
 
 # 依赖包目录
 node_modules/
-
+other/
 
 # 日志文件
 npm-debug.log*

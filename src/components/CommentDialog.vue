@@ -9,7 +9,8 @@
         <div class="comment-list" ref="listRef">
           <div v-if="loading" class="loading"><span class="spinner"></span></div>
           <div v-for="c in comments" :key="c.commentId" class="comment-item">
-            <img :src="c.user?.avatarUrl + '?param=40y40'" class="avatar" />
+            <img v-if="c.user?.avatarUrl" :src="c.user.avatarUrl + '?param=40y40'" class="avatar" />
+            <div v-else class="avatar avatar-placeholder"></div>
             <div class="comment-body">
               <div class="comment-meta">
                 <span class="nickname">{{ c.user?.nickname }}</span>
@@ -29,7 +30,7 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, onUnmounted } from 'vue'
 import { getSongComment } from '@/api/song'
 import Icon from '@/components/icons/Icon.vue'
 
@@ -44,14 +45,36 @@ const listRef = ref(null)
 const hasMore = ref(true)
 let offset = 0
 
+function onKeydown(e) { if (e.key === 'Escape') emit('close') }
+
 watch(() => props.visible, async (val) => {
   if (val && props.song) {
     comments.value = []
     offset = 0
     hasMore.value = true
     await loadComments()
+    window.addEventListener('keydown', onKeydown)
+    nextTick(() => {
+      if (listRef.value) listRef.value.addEventListener('scroll', onListScroll)
+    })
+  } else {
+    window.removeEventListener('keydown', onKeydown)
+    if (listRef.value) listRef.value.removeEventListener('scroll', onListScroll)
   }
 })
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown)
+  if (listRef.value) listRef.value.removeEventListener('scroll', onListScroll)
+})
+
+function onListScroll() {
+  if (!listRef.value || loading.value || !hasMore.value) return
+  const { scrollTop, scrollHeight, clientHeight } = listRef.value
+  if (scrollHeight - scrollTop - clientHeight < 100) {
+    loadComments()
+  }
+}
 
 async function loadComments() {
   if (!props.song || !hasMore.value) return

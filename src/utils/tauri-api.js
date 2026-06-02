@@ -19,56 +19,87 @@ export function closeWindow() {
 }
 
 export async function checkApiStatus() {
-  if (window.electronAPI?.checkApiStatus) {
-    return await window.electronAPI.checkApiStatus()
-  }
   try {
-    await fetch('http://127.0.0.1:3000/')
-    return true
+    if (window.electronAPI?.checkApiStatus) {
+      return await window.electronAPI.checkApiStatus()
+    }
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 3000)
+    try {
+      await fetch('http://127.0.0.1:3000/', { signal: controller.signal })
+      return true
+    } catch { return false } finally {
+      clearTimeout(timeout)
+    }
   } catch { return false }
 }
 
 export async function startApiServer(port) {
-  if (window.electronAPI?.startApiServer) return await window.electronAPI.startApiServer(port)
-  return '非 Electron 环境，请手动启动'
+  try {
+    if (window.electronAPI?.startApiServer) return await window.electronAPI.startApiServer(port)
+    return '非 Electron 环境，请手动启动'
+  } catch (e) { return `启动失败: ${e.message}` }
 }
 
 export async function stopApiServer() {
-  if (window.electronAPI?.stopApiServer) return await window.electronAPI.stopApiServer()
-  return '非 Electron 环境，无法停止'
+  try {
+    if (window.electronAPI?.stopApiServer) return await window.electronAPI.stopApiServer()
+    return '非 Electron 环境，无法停止'
+  } catch (e) { return `停止失败: ${e.message}` }
 }
 
 export async function selectDirectory() {
-  if (window.electronAPI?.selectDirectory) return await window.electronAPI.selectDirectory()
-  return null
+  try {
+    if (window.electronAPI?.selectDirectory) return await window.electronAPI.selectDirectory()
+    return null
+  } catch { return null }
+}
+
+export async function getMusicDir() {
+  try {
+    if (window.electronAPI?.getMusicDir) return await window.electronAPI.getMusicDir()
+    return ''
+  } catch { return '' }
 }
 
 export async function scanMusicDir(dir) {
-  if (window.electronAPI?.scanMusicDir) return await window.electronAPI.scanMusicDir(dir)
-  return []
+  try {
+    if (window.electronAPI?.scanMusicDir) return await window.electronAPI.scanMusicDir(dir)
+    return []
+  } catch { return [] }
 }
 
 export async function getLogPath() {
-  if (window.electronAPI?.getLogPath) return await window.electronAPI.getLogPath()
-  return null
+  try {
+    if (window.electronAPI?.getLogPath) return await window.electronAPI.getLogPath()
+    return null
+  } catch { return null }
 }
 
 export async function readLog() {
-  if (window.electronAPI?.readLog) return await window.electronAPI.readLog()
-  return ''
+  try {
+    if (window.electronAPI?.readLog) return await window.electronAPI.readLog()
+    return ''
+  } catch { return '' }
 }
 
 export async function clearLogs() {
-  if (window.electronAPI?.clearLogs) return await window.electronAPI.clearLogs()
-  return false
+  try {
+    if (window.electronAPI?.clearLogs) return await window.electronAPI.clearLogs()
+    return false
+  } catch { return false }
 }
 
 export async function clearAllData() {
-  if (window.electronAPI?.clearAllData) return await window.electronAPI.clearAllData()
-  return false
+  try {
+    if (window.electronAPI?.clearAllData) return await window.electronAPI.clearAllData()
+    return false
+  } catch { return false }
 }
 
 export async function resetApp() {
-  if (window.electronAPI?.resetApp) return await window.electronAPI.resetApp()
-  return false
+  try {
+    if (window.electronAPI?.resetApp) return await window.electronAPI.resetApp()
+    return false
+  } catch { return false }
 }

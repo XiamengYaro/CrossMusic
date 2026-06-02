@@ -12,8 +12,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { getRecentSong } from '@/api/song'
-import { getSongDetail } from '@/api/song'
+import { getRecentSong, getSongDetail } from '@/api/song'
 import SongList from '@/components/SongList.vue'
 import CommentDialog from '@/components/CommentDialog.vue'
 import Icon from '@/components/icons/Icon.vue'

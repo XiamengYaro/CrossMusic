@@ -26,7 +26,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { getUserCloud, cloudUpload } from '@/api/cloud'
 import { getSongDetail } from '@/api/song'
@@ -67,6 +67,7 @@ async function loadCloudDisk() {
 }
 
 async function onUpload(e) {
+  if (!userStore.isLoggedIn) return
   const files = Array.from(e.target.files || [])
   if (files.length === 0 || uploading.value) return
   e.target.value = ''
@@ -96,11 +97,13 @@ async function onUpload(e) {
     uploadStatus.value = `✗ 全部上传失败`
     uploadStatusClass.value = 'status-err'
   }
-  setTimeout(() => { uploadStatus.value = '' }, 4000)
+  statusTimer = setTimeout(() => { uploadStatus.value = '' }, 4000)
   await loadCloudDisk()
 }
 
+let statusTimer = null
 onMounted(() => loadCloudDisk())
+onUnmounted(() => { if (statusTimer) clearTimeout(statusTimer) })
 watch(() => userStore.cookie, (val) => { if (val) loadCloudDisk() })
 </script>
 

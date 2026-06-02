@@ -66,7 +66,7 @@ export const useUserStore = defineStore('user', () => {
       const prof = res.profile || res.data?.profile
       if (acc && acc.id) {
         setLoginData(null, prof || null, acc)
-        loadVipInfo()
+        loadVipInfo().catch(e => console.warn('[userStore] loadVipInfo failed:', e.message))
         return true
       }
     } catch (e) {
@@ -79,12 +79,12 @@ export const useUserStore = defineStore('user', () => {
       const prof = statusRes.profile || statusRes.data?.profile
       if (acc && acc.id) {
         setLoginData(null, prof || null, acc)
-        loadVipInfo()
+        loadVipInfo().catch(e => console.warn('[userStore] loadVipInfo failed:', e.message))
         return true
       }
       if (statusRes.profile && statusRes.profile.userId) {
         setLoginData(null, statusRes.profile, { id: statusRes.profile.userId })
-        loadVipInfo()
+        loadVipInfo().catch(e => console.warn('[userStore] loadVipInfo failed:', e.message))
         return true
       }
     } catch (e) {

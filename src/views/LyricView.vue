@@ -149,11 +149,15 @@
       <div class="lyric-info">
         <img v-if="currentSong?.al?.picUrl"
           :src="currentSong.al.picUrl + '?param=300y300'"
-          class="lyric-album-art"
-          :style="{ transform: `rotate(${spinAngle}deg)` }" />
+          class="lyric-album-art" />
         <div class="lyric-song-meta">
           <h2 class="lyric-song-name text-ellipsis">{{ currentSong?.name || '未知歌曲' }}</h2>
-          <p class="lyric-artist text-ellipsis">{{ artistNames }}</p>
+          <p class="lyric-artist text-ellipsis">
+            <template v-for="(ar, idx) in (currentSong?.ar || [])" :key="ar.id">
+              <span class="clickable-link" @click="goArtist(ar.id)">{{ ar.name }}</span>
+              <span v-if="idx < currentSong.ar.length - 1"> / </span>
+            </template>
+          </p>
         </div>
         <div class="lyric-progress">
           <div class="progress-bar" @click="seekLyric">
@@ -210,27 +214,26 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/player'
 import { useSettingStore } from '@/stores/setting'
 import { getLyricNew } from '@/api/song'
 import { formatTime } from '@/utils/format'
-import { useSpinning } from '@/utils/spinning'
 import Icon from '@/components/icons/Icon.vue'
 
 const props = defineProps({ visible: { type: Boolean, default: false } })
 const emit = defineEmits(['close'])
 
+const router = useRouter()
 const playerStore = usePlayerStore()
 const settingStore = useSettingStore()
 const lyricContainer = ref(null)
 
-const isSpinPlaying = computed(() => playerStore.isPlaying && !!currentSong.value)
-const { angle: spinAngle, stop: stopSpin } = useSpinning(isSpinPlaying, 12)
-onUnmounted(() => stopSpin())
 const showSettings = ref(false)
 const lyricLines = ref([])
 const activeLineIndex = ref(-1)
 let rafId = null
+let cachedLineEls = []
 
 // 提取歌词匹配逻辑为独立函数
 function findActiveLine(time, lines) {
@@ -273,6 +276,12 @@ const isPlaying = computed(() => playerStore.isPlaying)
 const currentTime = computed(() => playerStore.currentTime)
 const duration = computed(() => playerStore.duration)
 const progress = computed(() => playerStore.progress)
+
+function goArtist(id) {
+  if (!id) return
+  emit('close')
+  router.push(`/artist/${id}`)
+}
 const artistNames = computed(() => {
   if (!currentSong.value) return '未知歌手'
   const artists = currentSong.value.ar || currentSong.value.artists || []
@@ -341,21 +350,15 @@ async function loadLyrics() {
     const trans = new Map(parseLrc(tl).map(t => [t.startTime, t.mainLyric]))
     for (const l of lines) { const t = trans.get(l.startTime); if (t) l.translatedLyric = t }
     lyricLines.value = lines
+    nextTick(() => { if (lyricContainer.value) cachedLineEls = lyricContainer.value.querySelectorAll('.lyric-line') })
   } catch (e) { console.error('获取歌词失败:', e); lyricLines.value = [] }
 }
 
 function scrollToActive() {
-  if (!lyricContainer.value) return
-  const els = lyricContainer.value.querySelectorAll('.lyric-line')
-  if (els[activeLineIndex.value]) els[activeLineIndex.value].scrollIntoView({ behavior: 'smooth', block: 'center' })
+  if (!cachedLineEls.length && lyricContainer.value) cachedLineEls = lyricContainer.value.querySelectorAll('.lyric-line')
+  if (cachedLineEls[activeLineIndex.value]) cachedLineEls[activeLineIndex.value].scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
-// watch 作为备用检测机制
-watch(currentTime, (time) => {
-  const ls = lyricLines.value; if (!ls.length) return
-  const n = findActiveLine(time, ls)
-  if (n !== activeLineIndex.value) { activeLineIndex.value = n; nextTick(scrollToActive) }
-}, { flush: 'sync' })
 
 watch(() => currentSong.value?.id, (id) => {
   if (id) { lyricLines.value = []; activeLineIndex.value = -1; loadLyrics() }
@@ -529,10 +532,12 @@ onUnmounted(() => { stopHighlightLoop() })
 }
 
 .lyric-info { flex: 0 0 320px; display: flex; flex-direction: column; align-items: center; gap: 24px; }
-.lyric-album-art { width: 280px; height: 280px; border-radius: 50%; object-fit: cover; box-shadow: 0 20px 60px rgba(0,0,0,0.5); transition: transform 0.1s linear; }
+.lyric-album-art { width: 280px; height: 280px; border-radius: 16px; object-fit: cover; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
 .lyric-song-meta { text-align: center; width: 100%; }
 .lyric-song-name { font-size: 22px; font-weight: 700; color: white; max-width: 300px; margin: 0 auto; }
 .lyric-artist { font-size: 14px; color: rgba(255,255,255,0.6); margin-top: 6px; max-width: 300px; margin-left: auto; margin-right: auto; }
+.clickable-link { cursor: pointer; transition: color 0.2s; }
+.clickable-link:hover { color: rgba(255,255,255,0.9); text-decoration: underline; }
 
 .lyric-progress { width: 100%; max-width: 300px; }
 .progress-bar { cursor: pointer; padding: 8px 0; }

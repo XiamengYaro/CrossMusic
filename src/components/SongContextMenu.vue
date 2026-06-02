@@ -104,7 +104,7 @@ function playSong() {
 }
 
 function addToQueue() {
-  playerStore.playlist.push(props.song)
+  playerStore.playlist = [...playerStore.playlist, props.song]
   close()
 }
 

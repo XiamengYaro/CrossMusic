@@ -10,7 +10,11 @@ export function getItem(key) {
 }
 
 export function setItem(key, value) {
-  localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value))
+  try {
+    localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value))
+  } catch (e) {
+    console.warn('[storage] setItem failed:', e.message)
+  }
 }
 
 export function removeItem(key) {

@@ -14,7 +14,12 @@
       </div>
       <div class="song-meta">
         <span class="song-name text-ellipsis">{{ playerStore.currentSong?.name || '未播放' }}</span>
-        <span class="song-artist text-ellipsis">{{ artistNames }}</span>
+        <span class="song-artist text-ellipsis">
+          <template v-for="(ar, idx) in (playerStore.currentSong?.ar || [])" :key="ar.id">
+            <span class="clickable-link" @click="goArtist(ar.id)">{{ ar.name }}</span>
+            <span v-if="idx < playerStore.currentSong.ar.length - 1"> / </span>
+          </template>
+        </span>
         <span v-if="settingStore.showSongDetail && songDetailText" class="song-detail text-ellipsis">{{ songDetailText }}</span>
       </div>
     </div>
@@ -43,7 +48,7 @@
           <Icon name="skipForward" :size="16" />
         </button>
         <button class="ctrl-btn" title="歌词" @click="$emit('toggle-lyric')">
-          <Icon name="musicNote" :size="16" />
+          <Icon name="music" :size="16" />
         </button>
       </div>
       <div class="progress-bar">
@@ -134,6 +139,7 @@
 
 <script setup>
 import { ref, computed, onUnmounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/player'
 import { useUserStore } from '@/stores/user'
 import { useSettingStore } from '@/stores/setting'
@@ -145,6 +151,7 @@ import { useSpinning } from '@/utils/spinning'
 import Icon from '@/components/icons/Icon.vue'
 
 const emit = defineEmits(['toggle-lyric'])
+const router = useRouter()
 const playerStore = usePlayerStore()
 const userStore = useUserStore()
 const settingStore = useSettingStore()
@@ -154,13 +161,36 @@ const prevVolume = ref(0.7)
 
 const isSpinPlaying = computed(() => playerStore.isPlaying && !!playerStore.currentSong)
 const { angle: spinAngle, stop: stopSpin } = useSpinning(isSpinPlaying)
-onUnmounted(() => stopSpin())
+
+function onGlobalKeydown(e) {
+  if (e.key === 'Escape') {
+    if (showPlaylist.value) showPlaylist.value = false
+    else if (showQuality.value) showQuality.value = false
+  }
+}
+function onGlobalClick(e) {
+  if (showQuality.value && !e.target.closest('.quality-selector')) {
+    showQuality.value = false
+  }
+}
+onUnmounted(() => {
+  stopSpin()
+  window.removeEventListener('keydown', onGlobalKeydown)
+  document.removeEventListener('click', onGlobalClick)
+})
+window.addEventListener('keydown', onGlobalKeydown)
+document.addEventListener('click', onGlobalClick)
 
 const artistNames = computed(() => {
   const song = playerStore.currentSong
   if (!song) return ''
   return (song.ar || song.artists || []).map((a) => a.name).join(' / ')
 })
+
+function goArtist(id) {
+  if (!id) return
+  router.push(`/artist/${id}`)
+}
 
 const songDetailText = computed(() => {
   const d = playerStore.songDetail
@@ -301,11 +331,13 @@ function togglePlaylist() {
 }
 
 function removeFromPlaylist(idx) {
-  playerStore.playlist.splice(idx, 1)
+  const list = [...playerStore.playlist]
+  list.splice(idx, 1)
+  playerStore.playlist = list
   if (idx < playerStore.currentIndex) {
     playerStore.currentIndex--
-  } else if (idx === playerStore.currentIndex && playerStore.currentIndex >= playerStore.playlist.length) {
-    playerStore.currentIndex = playerStore.playlist.length - 1
+  } else if (idx === playerStore.currentIndex && playerStore.currentIndex >= list.length) {
+    playerStore.currentIndex = list.length - 1
   }
 }
 
@@ -328,11 +360,12 @@ function onDrop(targetIdx) {
   list.splice(targetIdx, 0, moved)
   playerStore.playlist = list
   // 更新 currentIndex
-  if (playerStore.currentIndex === dragIdx.value) {
+  const oldIdx = playerStore.currentIndex
+  if (oldIdx === dragIdx.value) {
     playerStore.currentIndex = targetIdx
-  } else if (dragIdx.value < playerStore.currentIndex && targetIdx >= playerStore.currentIndex) {
+  } else if (dragIdx.value < oldIdx && targetIdx >= oldIdx) {
     playerStore.currentIndex--
-  } else if (dragIdx.value > playerStore.currentIndex && targetIdx <= playerStore.currentIndex) {
+  } else if (dragIdx.value > oldIdx && targetIdx <= oldIdx) {
     playerStore.currentIndex++
   }
   dragIdx.value = -1
@@ -416,6 +449,15 @@ function onDrop(targetIdx) {
   font-size: 12px;
   color: var(--text-secondary);
   max-width: 160px;
+}
+
+.clickable-link {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.clickable-link:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
 }
 
 .song-detail {

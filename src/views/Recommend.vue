@@ -15,7 +15,7 @@
           class="song-card"
           @click="playSong(song, dailySongs)"
         >
-          <img :src="song.al?.picUrl + '?param=200y200'" class="song-card-img" />
+          <img :src="`${song.al?.picUrl || ''}?param=200y200`" class="song-card-img" />
           <p class="song-card-name text-ellipsis">{{ song.name }}</p>
           <p class="song-card-artist text-ellipsis">{{ (song.ar || []).map(a => a.name).join('/') }}</p>
         </div>
@@ -35,7 +35,7 @@
           @click="goPlaylist(pl.id)"
         >
           <div class="playlist-cover-wrap">
-            <img :src="pl.picUrl + '?param=200y200'" class="playlist-cover" />
+            <img v-if="pl.picUrl" :src="`${pl.picUrl}?param=200y200`" class="playlist-cover" />
             <span class="play-count"><Icon name="play" :size="10" /> {{ formatCount(pl.playCount) }}</span>
           </div>
           <p class="playlist-name text-ellipsis-2">{{ pl.name }}</p>
@@ -55,7 +55,7 @@
           class="new-song-item"
           @click="playSong(item, newSongs)"
         >
-          <img :src="(item.al?.picUrl || item.album?.picUrl || '') + '?param=80y80'" class="new-song-img" />
+          <img :src="`${item.al?.picUrl || item.album?.picUrl || ''}?param=80y80`" class="new-song-img" />
           <div class="new-song-info">
             <span class="new-song-name text-ellipsis">{{ item.name }}</span>
             <span class="new-song-artist text-ellipsis">{{ (item.ar || item.artists || []).map(a => a.name).join('/') }}</span>

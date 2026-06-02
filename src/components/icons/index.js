@@ -43,7 +43,6 @@ export const icons = {
   wifi: `<path d="M5 12.55a11 11 0 0114.08 0"/><path d="M1.42 9a16 16 0 0121.16 0"/><path d="M8.53 16.11a6 6 0 016.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>`,
   trash: `<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>`,
   radio: `<path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.4"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.4"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/>`,
-  musicNote: `<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>`,
   calendar: `<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><rect x="7" y="13" width="2" height="2" fill="currentColor" stroke="none"/><rect x="11" y="13" width="2" height="2" fill="currentColor" stroke="none"/><rect x="15" y="13" width="2" height="2" fill="currentColor" stroke="none"/><rect x="7" y="17" width="2" height="2" fill="currentColor" stroke="none"/><rect x="11" y="17" width="2" height="2" fill="currentColor" stroke="none"/>`,
   order: `<path d="M4 12h16"/><path d="M4 18h16"/><path d="M4 6h16"/><polyline points="3 12 6 9 6 15"/><polyline points="21 12 18 9 18 15"/>`,
   email: `<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4l-10 7L2 4"/>`,

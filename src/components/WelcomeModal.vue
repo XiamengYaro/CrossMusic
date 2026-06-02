@@ -176,7 +176,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { useSettingStore } from '@/stores/setting'
 import { useUserStore } from '@/stores/user'
 import { testConnection, setBaseURL } from '@/api/request'
@@ -276,9 +276,15 @@ async function browseDir() {
 }
 
 function skipLogin() {
-  if (pollTimer) clearInterval(pollTimer)
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+  if (captchaTimer) { clearInterval(captchaTimer); captchaTimer = null }
   emit('close')
 }
+
+onUnmounted(() => {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+  if (captchaTimer) { clearInterval(captchaTimer); captchaTimer = null }
+})
 
 function switchLoginMode(mode) {
   loginMode.value = mode
@@ -310,9 +316,11 @@ async function refreshQr() {
   qrStatus.value = ''
   try {
     const keyRes = await getLoginQrKey()
-    qrKey = keyRes.data.unikey
+    qrKey = keyRes?.data?.unikey
+    if (!qrKey) { qrStatus.value = '获取二维码失败'; return }
     const qrRes = await createLoginQr(qrKey)
-    qrImg.value = qrRes.data.qrimg
+    qrImg.value = qrRes?.data?.qrimg || ''
+    if (!qrImg.value) { qrStatus.value = '生成二维码失败'; return }
     pollQrStatus()
   } catch (e) {
     qrStatus.value = '获取二维码失败，请检查 API 地址'

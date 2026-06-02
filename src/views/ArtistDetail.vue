@@ -30,7 +30,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { usePlayerStore } from '@/stores/player'
 import { getArtistSongs, getArtistDesc, getArtistDetail } from '@/api/artist'
@@ -98,6 +98,10 @@ function openComment(song) {
 }
 
 onMounted(() => loadArtistDetail())
+
+watch(() => route.params.id, (id) => {
+  if (id) loadArtistDetail()
+})
 </script>
 
 <style scoped>

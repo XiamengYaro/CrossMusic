@@ -16,8 +16,17 @@ function getQualityFallback(currentQuality) {
   return QUALITY_LEVELS.slice(idx)
 }
 
-// 音质信息缓存
+// 音质信息缓存（限制大小防止内存泄漏）
 const qualityCache = new Map()
+const MAX_CACHE_SIZE = 500
+
+function addToQualityCache(songId, data) {
+  if (qualityCache.size >= MAX_CACHE_SIZE) {
+    const firstKey = qualityCache.keys().next().value
+    qualityCache.delete(firstKey)
+  }
+  qualityCache.set(songId, data)
+}
 
 export const usePlayerStore = defineStore('player', () => {
   const audio = ref(null)
@@ -35,6 +44,8 @@ export const usePlayerStore = defineStore('player', () => {
   const playQuality = ref('')
   const maxAvailableQuality = ref('standard')
   const songDetail = ref(null) // { bitrate, format, size, type }
+
+  let playRequestId = 0 // 用于防止并发 playSong 竞态
 
   const currentSong = computed(() => {
     if (currentIndex.value >= 0 && currentIndex.value < playlist.value.length) {
@@ -54,7 +65,8 @@ export const usePlayerStore = defineStore('player', () => {
   })
 
   const currentQualityLabel = computed(() => {
-    return QUALITY_LABELS[playQuality.value] || '标准'
+    const selected = tempQuality.value || quality.value
+    return QUALITY_LABELS[selected] || '标准'
   })
 
   function initAudio() {
@@ -75,28 +87,16 @@ export const usePlayerStore = defineStore('player', () => {
       const cached = qualityCache.get(songId)
       maxAvailableQuality.value = cached.maxQuality
     } else {
-      // 使用 /song/detail 接口获取歌曲详情，判断支持的最高音质
+      // 使用 /song/detail 接口获取歌曲详情，用于缓存
+      // 但不人为限制最高音质——hr/sq 字段不反映 jymaster 可用性
+      // 始终允许选择最高音质，由 fetchSongUrl 的降级机制处理
       try {
         const detailRes = await getSongDetail(songId)
         const songData = detailRes.songs?.[0]
         
         if (songData) {
-          // 根据 hr, sq, h, m, l 字段判断支持的音质
-          // hr: Hi-Res, sq: 无损, h: 高质量, m: 中质量, l: 低质量
-          if (songData.hr) {
-            maxAvailableQuality.value = 'hires'
-          } else if (songData.sq) {
-            maxAvailableQuality.value = 'lossless'
-          } else if (songData.h) {
-            maxAvailableQuality.value = 'exhigh'
-          } else if (songData.m) {
-            maxAvailableQuality.value = 'higher'
-          } else {
-            maxAvailableQuality.value = 'standard'
-          }
-          
-          // 缓存结果
-          qualityCache.set(songId, { maxQuality: maxAvailableQuality.value })
+          maxAvailableQuality.value = 'jymaster'
+          addToQualityCache(songId, { maxQuality: 'jymaster' })
         }
       } catch (e) {
         console.warn('获取歌曲详情失败:', e)
@@ -108,6 +108,7 @@ export const usePlayerStore = defineStore('player', () => {
     // 优先使用临时音质，否则使用默认音质
     const selectedQuality = tempQuality.value || quality.value
     const levels = getQualityFallback(selectedQuality)
+    let lastError = null
     for (const level of levels) {
       try {
         const res = await getSongUrl(songId, level)
@@ -125,13 +126,17 @@ export const usePlayerStore = defineStore('player', () => {
           }
           return urlData.url
         }
-      } catch {}
+      } catch (e) {
+        lastError = e
+      }
     }
+    if (lastError) console.warn('获取播放地址失败:', lastError)
     return null
   }
 
   async function playSong(song, list = null) {
     initAudio()
+    const requestId = ++playRequestId
     loading.value = true
 
     // 对于非本地歌曲，总是获取完整详情以确保封面、歌手等信息完整
@@ -145,6 +150,9 @@ export const usePlayerStore = defineStore('player', () => {
         console.warn('获取歌曲详情失败:', e)
       }
     }
+
+    // 检查是否已被更新的请求取代
+    if (requestId !== playRequestId) return
 
     if (list && list.length > 0) {
       playlist.value = list
@@ -172,6 +180,8 @@ export const usePlayerStore = defineStore('player', () => {
       } else {
         url = await fetchSongUrl(song.id)
       }
+      // 再次检查是否被取代
+      if (requestId !== playRequestId) return
       if (url) {
         songUrl.value = url
         audio.value.src = url
@@ -183,7 +193,7 @@ export const usePlayerStore = defineStore('player', () => {
     } catch (e) {
       console.error('获取播放地址失败:', e)
     } finally {
-      loading.value = false
+      if (requestId === playRequestId) loading.value = false
     }
   }
 
@@ -191,9 +201,11 @@ export const usePlayerStore = defineStore('player', () => {
     const url = await fetchSongUrl(song.id)
     if (!url) throw new Error('无法获取下载地址')
     const response = await fetch(url)
+    if (!response.ok) throw new Error(`下载失败: HTTP ${response.status}`)
     const blob = await response.blob()
     const ext = url.includes('.flac') ? 'flac' : url.includes('.m4a') ? 'm4a' : 'mp3'
-    const filename = `${song.ar?.[0]?.name || '未知歌手'} - ${song.name}.${ext}`
+    const safeName = (name) => (name || '').replace(/[\/\\:*?"<>|]/g, '_')
+    const filename = `${safeName(song.ar?.[0]?.name) || '未知歌手'} - ${safeName(song.name)}.${ext}`
     const blobUrl = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = blobUrl
@@ -208,7 +220,7 @@ export const usePlayerStore = defineStore('player', () => {
   function togglePlay() {
     if (!audio.value || !songUrl.value) return
     if (isPlaying.value) audio.value.pause()
-    else audio.value.play()
+    else audio.value.play().catch(e => console.warn('播放失败:', e))
   }
 
   function playNext() {
@@ -230,7 +242,11 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function onSongEnd() {
-    if (playMode.value === 'repeat') { audio.value.currentTime = 0; audio.value.play() }
+    if (playMode.value === 'repeat') {
+      audio.value.currentTime = 0
+      currentTime.value = 0
+      audio.value.play().catch(e => console.warn('重播失败:', e))
+    }
     else playNext()
   }
 
@@ -264,7 +280,7 @@ export const usePlayerStore = defineStore('player', () => {
         songUrl.value = url
         audio.value.src = url
         audio.value.currentTime = curTime
-        if (wasPlaying) await audio.value.play()
+        if (wasPlaying) await audio.value.play().catch(e => console.warn('播放失败:', e))
       }
     }
   }
@@ -281,7 +297,7 @@ export const usePlayerStore = defineStore('player', () => {
         songUrl.value = url
         audio.value.src = url
         audio.value.currentTime = curTime
-        if (wasPlaying) await audio.value.play()
+        if (wasPlaying) await audio.value.play().catch(e => console.warn('播放失败:', e))
       }
     }
   }
@@ -295,6 +311,7 @@ export const usePlayerStore = defineStore('player', () => {
     currentTime.value = 0; duration.value = 0; songUrl.value = ''
     playQuality.value = ''; maxAvailableQuality.value = 'standard'
     tempQuality.value = ''
+    qualityCache.clear()
   }
 
   return {

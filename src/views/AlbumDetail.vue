@@ -1,7 +1,7 @@
 <template>
   <div class="album-detail" v-if="album">
     <div class="album-header">
-      <img :src="album.picUrl + '?param=200y200'" class="album-cover" />
+      <img :src="`${album.picUrl || ''}?param=200y200`" class="album-cover" />
       <div class="album-info">
         <div class="album-label">专辑</div>
         <h1 class="album-name">{{ album.name }}</h1>
@@ -24,10 +24,13 @@
   <div v-else-if="loading" class="loading-center">
     <span class="spinner"></span>
   </div>
+  <div v-else class="loading-center">
+    <p>专辑信息加载失败</p>
+  </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getAlbum } from '@/api/album'
 import { usePlayerStore } from '@/stores/player'
@@ -45,17 +48,32 @@ const loading = ref(true)
 const showComment = ref(false)
 const commentSong = ref(null)
 
-onMounted(async () => {
+async function loadAlbumDetail() {
+  loading.value = true
+  album.value = null
+  songs.value = []
   try {
     const res = await getAlbum(route.params.id)
-    const data = res.album || res
-    album.value = data
-    songs.value = data.songs || data.list || []
+    // 兼容不同响应结构
+    const albumData = res?.album || res?.data?.album || res
+    const songsData = res?.songs || res?.data?.songs || albumData?.songs || []
+    if (albumData && albumData.name) {
+      album.value = albumData
+      songs.value = Array.isArray(songsData) ? songsData : []
+    } else {
+      console.warn('专辑数据格式异常:', res)
+    }
   } catch (e) {
     console.error('获取专辑详情失败:', e)
   } finally {
     loading.value = false
   }
+}
+
+onMounted(() => loadAlbumDetail())
+
+watch(() => route.params.id, (id) => {
+  if (id) loadAlbumDetail()
 })
 
 function playAll() {

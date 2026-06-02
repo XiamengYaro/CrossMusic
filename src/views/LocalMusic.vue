@@ -15,7 +15,7 @@
         <span>添加音乐文件</span>
         <input type="file" accept="audio/*" multiple @change="onFilesSelected" style="display:none" />
       </label>
-      <button v-if="settingStore.downloadDir" class="btn-import btn-scan" @click="scanDir">
+      <button class="btn-import btn-scan" @click="scanDir">
         <Icon name="search" :size="16" />
         <span>扫描目录</span>
       </button>
@@ -30,7 +30,7 @@
         <Icon name="plus" :size="14" /> 添加音乐
         <input type="file" accept="audio/*" multiple @change="onFilesSelected" style="display:none" />
       </label>
-      <button v-if="settingStore.downloadDir" class="btn-toolbar" @click="scanDir">
+      <button class="btn-toolbar" @click="scanDir">
         <Icon name="search" :size="14" /> 扫描目录
       </button>
       <button class="btn-toolbar btn-clear" @click="clearAll"><Icon name="trash" :size="14" /> 清空</button>
@@ -43,7 +43,7 @@
 import { ref, onMounted } from 'vue'
 import { usePlayerStore } from '@/stores/player'
 import { useSettingStore } from '@/stores/setting'
-import { scanMusicDir } from '@/utils/tauri-api'
+import { scanMusicDir, selectDirectory } from '@/utils/tauri-api'
 import { getItem, setItem } from '@/utils/storage'
 import SongList from '@/components/SongList.vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -53,6 +53,7 @@ const settingStore = useSettingStore()
 const songs = ref([])
 const scanning = ref(false)
 const scanCount = ref(0)
+const blobUrls = new Set()
 
 onMounted(() => {
   const saved = getItem('localSongs')
@@ -70,7 +71,14 @@ function parseFileName(filename) {
 
 async function scanDir() {
   const dir = settingStore.downloadDir
-  if (!dir) return
+  if (!dir) {
+    const selected = await selectDirectory()
+    if (selected) {
+      settingStore.setDownloadDir(selected)
+    } else {
+      return
+    }
+  }
   scanning.value = true
   scanCount.value = 0
   try {
@@ -81,7 +89,7 @@ async function scanDir() {
       if (existingPaths.has(file.path)) continue
       const { artist, title } = parseFileName(file.name)
       const song = {
-        id: Date.now() + added + Math.random(),
+        id: crypto.randomUUID(),
         name: title,
         dt: 0,
         al: { name: '本地音乐', picUrl: '' },
@@ -107,9 +115,10 @@ function onFilesSelected(e) {
   const files = Array.from(e.target.files || [])
   for (const file of files) {
     const url = URL.createObjectURL(file)
+    blobUrls.add(url)
     const { artist, title } = parseFileName(file.name)
     const song = {
-      id: Date.now() + Math.random(),
+      id: crypto.randomUUID(),
       name: title,
       dt: 0,
       al: { name: '本地音乐', picUrl: '' },
@@ -133,7 +142,13 @@ function playAll() {
   playerStore.playSong(songs.value[0], songs.value)
 }
 
+function revokeBlobUrls() {
+  for (const url of blobUrls) URL.revokeObjectURL(url)
+  blobUrls.clear()
+}
+
 function clearAll() {
+  revokeBlobUrls()
   songs.value = []
   saveLocal()
 }

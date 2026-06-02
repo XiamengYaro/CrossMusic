@@ -31,7 +31,8 @@ request.interceptors.request.use(
         }
       }
     }
-    // 传递 cookie（始终放在 params 中，确保 API 服务端能读取）
+    // 传递 cookie（放在 params 中，确保本地 API 服务端能读取）
+    // 注意：cookie 仅发送到本地 API 服务 (127.0.0.1)，不会泄露到外部
     const cookie = getItem('cookie')
     if (cookie) {
       config.params = { ...config.params, cookie }
@@ -55,6 +56,13 @@ request.interceptors.response.use(
     return Promise.reject(new Error(data?.message || '请求失败'))
   },
   (error) => {
+    // 401 认证失败时清除登录状态
+    if (error.response?.status === 401) {
+      try {
+        const { useUserStore } = require('@/stores/user')
+        useUserStore().clearLoginData()
+      } catch {}
+    }
     return Promise.reject(error)
   }
 )
@@ -69,7 +77,7 @@ export async function testConnection(url) {
     })
     return res.data
   } catch (e) {
-    throw new Error('无法连接到 API 服务，请检查地址是否正确')
+    throw new Error(e.message || '无法连接到 API 服务，请检查地址是否正确')
   }
 }
 

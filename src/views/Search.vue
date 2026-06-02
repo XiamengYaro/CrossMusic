@@ -34,7 +34,7 @@
         class="artist-card"
         @click="goArtist(artist.id)"
       >
-        <img :src="(artist.picUrl || artist.img1v1Url) + '?param=120y120'" class="artist-img" />
+        <img :src="`${artist.picUrl || artist.img1v1Url || ''}?param=120y120`" class="artist-img" />
         <p class="artist-name text-ellipsis">{{ artist.name }}</p>
       </div>
     </div>
@@ -47,7 +47,7 @@
         class="album-card"
         @click="goAlbum(album.id)"
       >
-        <img :src="(album.picUrl || album.blurPicUrl) + '?param=160y160'" class="album-img" />
+        <img :src="`${album.picUrl || album.blurPicUrl || ''}?param=160y160`" class="album-img" />
         <p class="album-name text-ellipsis">{{ album.name }}</p>
         <p class="album-artist text-ellipsis">{{ album.artist?.name }}</p>
       </div>
@@ -61,7 +61,7 @@
         class="playlist-card"
         @click="goPlaylist(pl.id)"
       >
-        <img :src="(pl.coverImgUrl || pl.picUrl) + '?param=160y160'" class="playlist-img" />
+        <img :src="`${pl.coverImgUrl || pl.picUrl || ''}?param=160y160`" class="playlist-img" />
         <p class="playlist-name text-ellipsis">{{ pl.name }}</p>
         <p class="playlist-count">{{ pl.trackCount }}首</p>
       </div>
@@ -82,7 +82,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { search } from '@/api/song'
 import SongList from '@/components/SongList.vue'
 import CommentDialog from '@/components/CommentDialog.vue'
-import Icon from '@/components/icons/Icon.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -170,6 +169,7 @@ onMounted(() => {
   }
 })
 
+let searchDebounceTimer = null
 watch(() => route.query.keywords, (val) => {
   if (val && val !== keyword.value) {
     keyword.value = val
@@ -177,7 +177,8 @@ watch(() => route.query.keywords, (val) => {
     searchType.value = 1
     offset.value = 0
     results.value = []
-    searchRequest()
+    clearTimeout(searchDebounceTimer)
+    searchDebounceTimer = setTimeout(() => searchRequest(), 300)
   }
 })
 </script>

@@ -1,22 +1,7 @@
-const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, globalShortcut } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, globalShortcut, shell } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const net = require('net')
-const { autoUpdater } = require('electron-updater')
-
-// 配置自动更新
-autoUpdater.autoDownload = false
-autoUpdater.autoInstallOnAppQuit = true
-autoUpdater.logger = console
-
-// 镜像站列表
-const MIRRORS = [
-  { name: 'GitHub', transform: (url) => url },
-  { name: 'ghproxy', transform: (url) => `https://ghproxy.com/${url}` },
-  { name: 'gh-proxy', transform: (url) => `https://gh-proxy.com/${url}` },
-  { name: 'mirror.ghproxy', transform: (url) => `https://mirror.ghproxy.com/${url}` }
-]
-
 let mainWindow
 let tray = null
 let apiServer = null
@@ -56,17 +41,17 @@ async function startApiServer() {
 }
 
 /** 递归扫描目录中的音频文件 */
-function scanDirSync(dir, results = []) {
+async function scanDirAsync(dir, results = []) {
   try {
-    const entries = fs.readdirSync(dir, { withFileTypes: true })
+    const entries = await fs.promises.readdir(dir, { withFileTypes: true })
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name)
       if (entry.isDirectory()) {
-        scanDirSync(fullPath, results)
+        await scanDirAsync(fullPath, results)
       } else if (entry.isFile()) {
         const ext = path.extname(entry.name).toLowerCase()
         if (AUDIO_EXTS.includes(ext)) {
-          const stat = fs.statSync(fullPath)
+          const stat = await fs.promises.stat(fullPath)
           results.push({ name: entry.name, path: fullPath, size: stat.size, ext })
         }
       }
@@ -88,11 +73,11 @@ function getLogFile() {
   return path.join(getLogDir(), 'app.log')
 }
 
-function writeLog(level, message) {
+async function writeLog(level, message) {
   const logFile = getLogFile()
   const time = new Date().toISOString()
   const line = `[${time}] [${level}] ${message}\n`
-  fs.appendFileSync(logFile, line, 'utf-8')
+  await fs.promises.appendFile(logFile, line, 'utf-8')
 }
 
 function createWindow() {
@@ -159,15 +144,19 @@ function createTray() {
 }
 
 function registerShortcuts() {
-  globalShortcut.register('CommandOrControl+Space', () => {
-    mainWindow?.webContents.send('shortcut', 'play-pause')
-  })
-  globalShortcut.register('CommandOrControl+Left', () => {
-    mainWindow?.webContents.send('shortcut', 'prev')
-  })
-  globalShortcut.register('CommandOrControl+Right', () => {
-    mainWindow?.webContents.send('shortcut', 'next')
-  })
+  const shortcuts = [
+    { key: 'CommandOrControl+Space', action: 'play-pause' },
+    { key: 'CommandOrControl+Left', action: 'prev' },
+    { key: 'CommandOrControl+Right', action: 'next' },
+  ]
+  for (const { key, action } of shortcuts) {
+    const success = globalShortcut.register(key, () => {
+      mainWindow?.webContents.send('shortcut', action)
+    })
+    if (!success) {
+      console.warn(`[Shortcut] 注册失败: ${key}`)
+    }
+  }
 }
 
 app.whenReady().then(async () => {
@@ -192,7 +181,13 @@ app.on('activate', async () => {
     mainWindow.show()
     mainWindow.focus()
   } else {
-    if (!apiServer) apiServer = await startApiServer()
+    if (!apiServer) {
+      try {
+        apiServer = await startApiServer()
+      } catch (e) {
+        console.error('[App] activate 时启动 API 服务失败:', e.message)
+      }
+    }
     createWindow()
   }
 })
@@ -219,7 +214,12 @@ ipcMain.handle('check-api-status', () => {
 })
 
 ipcMain.handle('start-api-server', async (_event, port) => {
-  if (port) apiPort = port
+  if (port) {
+    if (!Number.isInteger(port) || port < 1024 || port > 65535) {
+      return `无效端口: ${port}，有效范围 1024-65535`
+    }
+    apiPort = port
+  }
   if (apiServer) return `API 服务已在端口 ${apiPort} 运行中`
   try {
     const generateConfig = require('../server/generateConfig')
@@ -241,9 +241,21 @@ ipcMain.handle('select-directory', async () => {
   return result.filePaths[0]
 })
 
-ipcMain.handle('scan-music-dir', (_event, dir) => {
-  if (!dir || !fs.existsSync(dir)) return []
-  return scanDirSync(dir)
+ipcMain.handle('get-music-dir', () => {
+  try {
+    return app.getPath('music')
+  } catch {
+    return ''
+  }
+})
+
+ipcMain.handle('scan-music-dir', async (_event, dir) => {
+  if (!dir) return []
+  try {
+    const stat = await fs.promises.stat(dir)
+    if (!stat.isDirectory()) return []
+  } catch { return [] }
+  return scanDirAsync(dir)
 })
 
 ipcMain.handle('get-log-path', () => getLogFile())
@@ -274,154 +286,4 @@ ipcMain.handle('reset-app', () => {
   const storagePath = path.join(app.getPath('userData'), 'Local Storage')
   if (fs.existsSync(storagePath)) fs.rmSync(storagePath, { recursive: true, force: true })
   return true
-})
-
-// --- Update Handlers ---
-
-/** 获取当前平台信息 */
-function getPlatformInfo() {
-  return {
-    platform: process.platform,
-    arch: process.arch,
-    version: app.getVersion()
-  }
-}
-
-/** 根据平台过滤更新资源 */
-function filterAssetsByPlatform(assets) {
-  const { platform, arch } = getPlatformInfo()
-  
-  const patterns = {
-    darwin: ['.dmg', 'mac'],
-    win32: ['.exe', '.nsis', 'win'],
-    linux: ['.AppImage', '.deb', 'linux']
-  }
-  
-  const platformPatterns = patterns[platform] || []
-  
-  return assets.filter(asset => {
-    if (!asset || !asset.name) return false
-    
-    const name = asset.name.toLowerCase()
-    const matchesPlatform = platformPatterns.some(p => name.includes(p))
-    const matchesArch = arch === 'arm64'
-      ? name.includes('arm64') || name.includes('aarch64')
-      : !name.includes('arm64') && !name.includes('aarch64')
-    
-    return matchesPlatform && matchesArch
-  })
-}
-
-// IPC: 检查更新
-ipcMain.handle('check-for-updates', async () => {
-  try {
-    const result = await autoUpdater.checkForUpdates()
-    
-    if (!result || !result.updateInfo) {
-      return { hasUpdate: false }
-    }
-    
-    const { updateInfo } = result
-    const filteredAssets = filterAssetsByPlatform(updateInfo.files || [])
-    
-    return {
-      hasUpdate: result.isUpdateAvailable,
-      currentVersion: getPlatformInfo().version,
-      latestVersion: updateInfo.version,
-      downloadUrl: filteredAssets[0]?.url || updateInfo.files?.[0]?.url,
-      releaseNotes: updateInfo.releaseNotes || '',
-      releaseDate: updateInfo.releaseDate,
-      platform: getPlatformInfo().platform,
-      arch: getPlatformInfo().arch,
-      files: filteredAssets
-    }
-  } catch (error) {
-    console.error('[Updater] 检查更新失败:', error)
-    throw error
-  }
-})
-
-// IPC: 下载更新（支持镜像站）
-ipcMain.handle('download-update', async () => {
-  try {
-    // 监听下载进度
-    autoUpdater.on('download-progress', (progress) => {
-      mainWindow?.webContents.send('update-download-progress', {
-        percent: progress.percent,
-        bytesPerSecond: progress.bytesPerSecond,
-        transferred: progress.transferred,
-        total: progress.total
-      })
-    })
-    
-    await autoUpdater.downloadUpdate()
-    return { success: true }
-  } catch (error) {
-    console.error('[Updater] 下载更新失败，尝试镜像站...', error)
-    
-    // 尝试使用镜像站下载
-    try {
-      const result = await autoUpdater.checkForUpdates()
-      if (result?.updateInfo) {
-        const filteredAssets = filterAssetsByPlatform(result.updateInfo.files || [])
-        const asset = filteredAssets[0] || result.updateInfo.files?.[0]
-        
-        if (asset?.url) {
-          // 尝试每个镜像站
-          for (const mirror of MIRRORS) {
-            try {
-              const mirrorUrl = mirror.transform(asset.url)
-              console.log(`[Updater] 尝试镜像站: ${mirror.name}`)
-              
-              // 使用 Electron 的 net 模块下载
-              const https = require('https')
-              const downloadsPath = app.getPath('downloads')
-              const filePath = path.join(downloadsPath, asset.name)
-              
-              await new Promise((resolve, reject) => {
-                const file = fs.createWriteStream(filePath)
-                https.get(mirrorUrl, (response) => {
-                  // 处理重定向
-                  if (response.statusCode === 301 || response.statusCode === 302) {
-                    https.get(response.headers.location, (redirectResponse) => {
-                      redirectResponse.pipe(file)
-                      file.on('finish', () => {
-                        file.close()
-                        resolve()
-                      })
-                    }).on('error', reject)
-                  } else {
-                    response.pipe(file)
-                    file.on('finish', () => {
-                      file.close()
-                      resolve()
-                    })
-                  }
-                }).on('error', reject)
-              })
-              
-              console.log(`[Updater] 镜像站下载成功: ${mirror.name}`)
-              return { success: true, filePath, mirror: mirror.name }
-            } catch (mirrorError) {
-              console.warn(`[Updater] 镜像站 ${mirror.name} 失败:`, mirrorError.message)
-            }
-          }
-        }
-      }
-    } catch (fallbackError) {
-      console.error('[Updater] 镜像站下载也失败:', fallbackError)
-    }
-    
-    throw error
-  }
-})
-
-// IPC: 安装更新并重启
-ipcMain.handle('install-update', () => {
-  autoUpdater.quitAndInstall(false, true)
-})
-
-// IPC: 获取平台信息
-ipcMain.handle('get-platform-info', () => {
-  return getPlatformInfo()
 })

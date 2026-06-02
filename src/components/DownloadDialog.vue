@@ -14,27 +14,6 @@
           <span class="song-artist">{{ artistNames }}</span>
         </div>
 
-        <div class="quality-section">
-          <label class="section-label">选择下载音质</label>
-          <div class="quality-list">
-            <div
-              v-for="q in availableQualities"
-              :key="q.value"
-              class="quality-item"
-              :class="{ active: selectedQualities.includes(q.value) }"
-              @click="toggleQuality(q.value)"
-            >
-              <div class="quality-check">
-                <Icon v-if="selectedQualities.includes(q.value)" name="check" :size="14" />
-              </div>
-              <div class="quality-info">
-                <span class="quality-name">{{ q.label }}</span>
-                <span class="quality-desc">{{ getQualityDesc(q.value) }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <div v-if="downloadProgress > 0" class="progress-section">
           <div class="progress-bar">
             <div class="progress-fill" :style="{ width: downloadProgress + '%' }"></div>
@@ -49,11 +28,11 @@
         <button class="btn-cancel" @click="$emit('close')">取消</button>
         <button 
           class="btn-download" 
-          :disabled="selectedQualities.length === 0 || downloading"
+          :disabled="downloading"
           @click="startDownload"
         >
           <Icon v-if="downloading" name="spinner" :size="14" class="spinner" />
-          <span v-else>下载 ({{ selectedQualities.length }})</span>
+          <span v-else>下载</span>
         </button>
       </div>
     </div>
@@ -61,66 +40,44 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { getSongUrl } from '@/api/song'
 import Icon from '@/components/icons/Icon.vue'
 
 const props = defineProps({
   song: { type: Object, required: true },
-  maxQuality: { type: String, default: 'standard' }
 })
 
 const emit = defineEmits(['close'])
 
-// 音质等级从高到低排列
 const QUALITY_LEVELS = ['jymaster', 'hires', 'lossless', 'exhigh', 'higher', 'standard']
-const QUALITY_LABELS = {
-  jymaster: '超清母带', hires: 'Hi-Res', lossless: '无损',
-  exhigh: '极高', higher: '较高', standard: '标准'
-}
-const QUALITY_DESC = {
-  jymaster: '最高品质，文件较大',
-  hires: '高解析度音频',
-  lossless: '无损压缩格式',
-  exhigh: '极高码率，品质优秀',
-  higher: '较高码率，推荐使用',
-  standard: '标准品质，文件较小'
-}
 
-const selectedQualities = ref([])
 const downloading = ref(false)
 const downloadProgress = ref(0)
 const status = ref('')
 const statusClass = ref('')
+
+let abortController = null
+
+watch(() => props.song, () => {
+  downloading.value = false
+  downloadProgress.value = 0
+  status.value = ''
+  statusClass.value = ''
+})
+
+function onKeydown(e) { if (e.key === 'Escape') emit('close') }
+onMounted(() => { window.addEventListener('keydown', onKeydown) })
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown)
+  if (abortController) abortController.abort()
+})
 
 const artistNames = computed(() => {
   if (!props.song) return ''
   const artists = props.song.ar || props.song.artists || []
   return artists.length > 0 ? artists.map(a => a.name).join(' / ') : '未知歌手'
 })
-
-const availableQualities = computed(() => {
-  const maxIdx = QUALITY_LEVELS.indexOf(props.maxQuality)
-  if (maxIdx < 0) return QUALITY_LEVELS.map(q => ({ label: QUALITY_LABELS[q], value: q }))
-  return QUALITY_LEVELS.slice(maxIdx).map(q => ({ label: QUALITY_LABELS[q], value: q }))
-})
-
-function getQualityDesc(value) {
-  return QUALITY_DESC[value] || ''
-}
-
-function toggleQuality(value) {
-  const idx = selectedQualities.value.indexOf(value)
-  if (idx >= 0) {
-    selectedQualities.value.splice(idx, 1)
-  } else {
-    selectedQualities.value.push(value)
-  }
-}
-
-function getQualityIdx(q) {
-  return QUALITY_LEVELS.indexOf(q)
-}
 
 function getExt(type) {
   if (!type) return 'mp3'
@@ -130,62 +87,71 @@ function getExt(type) {
   return 'mp3'
 }
 
+function safeName(name) {
+  return (name || '').replace(/[\/\\:*?"<>|]/g, '_')
+}
+
 async function startDownload() {
-  if (selectedQualities.value.length === 0) return
-  
+  abortController = new AbortController()
   downloading.value = true
-  status.value = '准备下载...'
+  status.value = '正在获取下载链接...'
   statusClass.value = 'status-info'
-  
+
   const songName = props.song.name || '未知歌曲'
   const artistName = props.song.ar?.[0]?.name || '未知歌手'
-  
-  let completed = 0
-  const total = selectedQualities.value.length
-  
-  for (const quality of selectedQualities.value) {
-    try {
-      status.value = `正在下载 ${QUALITY_LABELS[quality]}...`
-      
-      const res = await getSongUrl(props.song.id, quality)
-      const urlData = res.data?.[0]
-      
-      if (!urlData?.url) {
-        console.warn(`无法获取 ${quality} 音质的下载链接`)
-        continue
-      }
-      
-      const ext = getExt(urlData.type)
-      const qualityLabel = QUALITY_LABELS[quality]
-      const filename = `${artistName} - ${songName} [${qualityLabel}].${ext}`
-      
-      // 使用 fetch 下载
-      const response = await fetch(urlData.url)
-      const blob = await response.blob()
-      const blobUrl = URL.createObjectURL(blob)
-      
-      const a = document.createElement('a')
-      a.href = blobUrl
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
-      
-      completed++
-      downloadProgress.value = Math.round((completed / total) * 100)
-      
-    } catch (e) {
-      console.error(`下载 ${quality} 音质失败:`, e)
+
+  try {
+    let urlData = null
+    for (const level of QUALITY_LEVELS) {
+      if (abortController.signal.aborted) return
+      try {
+        const res = await getSongUrl(props.song.id, level)
+        const data = res.data?.[0]
+        if (data?.url) { urlData = data; break }
+      } catch {}
     }
+
+    if (!urlData?.url) {
+      status.value = '无法获取下载链接'
+      statusClass.value = 'status-error'
+      downloading.value = false
+      return
+    }
+
+    status.value = '正在下载...'
+    downloadProgress.value = 50
+
+    const response = await fetch(urlData.url, { signal: abortController.signal })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const blob = await response.blob()
+    downloadProgress.value = 90
+
+    const ext = getExt(urlData.type)
+    const filename = `${safeName(artistName)} - ${safeName(songName)}.${ext}`
+    const blobUrl = URL.createObjectURL(blob)
+
+    const a = document.createElement('a')
+    a.href = blobUrl
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
+
+    downloadProgress.value = 100
+    status.value = '下载完成'
+    statusClass.value = 'status-success'
+    downloading.value = false
+    setTimeout(() => { emit('close') }, 1500)
+  } catch (e) {
+    if (e.name === 'AbortError') return
+    console.error('下载失败:', e)
+    status.value = '下载失败'
+    statusClass.value = 'status-error'
+    downloading.value = false
   }
-  
-  status.value = `下载完成 (${completed}/${total})`
-  statusClass.value = 'status-success'
-  downloading.value = false
-  
-  setTimeout(() => { emit('close') }, 1500)
+  abortController = null
 }
 </script>
 
@@ -207,8 +173,7 @@ async function startDownload() {
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-radius: var(--radius-xl);
-  width: 400px;
-  max-height: 80vh;
+  width: 360px;
   box-shadow: var(--shadow-lg);
   border: var(--glass-border);
   animation: slideUp 0.3s ease;
@@ -246,8 +211,6 @@ async function startDownload() {
 }
 
 .download-body {
-  flex: 1;
-  overflow-y: auto;
   padding: 16px 20px;
 }
 
@@ -266,78 +229,6 @@ async function startDownload() {
 .song-artist {
   font-size: 13px;
   color: var(--text-secondary);
-}
-
-.quality-section {
-  margin-bottom: 16px;
-}
-
-.section-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-  display: block;
-}
-
-.quality-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.quality-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all 0.15s;
-  border: 1px solid var(--border-light);
-}
-
-.quality-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.quality-item.active {
-  background: var(--accent-light);
-  border-color: var(--accent);
-}
-
-.quality-check {
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  border: 1.5px solid var(--border-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  transition: all 0.15s;
-  flex-shrink: 0;
-}
-
-.quality-item.active .quality-check {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-.quality-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.quality-name {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.quality-desc {
-  font-size: 12px;
-  color: var(--text-tertiary);
 }
 
 .progress-section {
