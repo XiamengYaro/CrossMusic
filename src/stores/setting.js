@@ -12,6 +12,7 @@ export const useSettingStore = defineStore('setting', () => {
   const theme = ref(getItem('theme') || 'dark')
   const debugMode = ref(getItem('debugMode') || false)
   const searchHistory = ref(getItem('searchHistory') || [])
+  const showSongDetail = ref(getItem('showSongDetail') || false)
 
   // 歌词设置
   const lyricFontSize = ref(getItem('lyricFontSize') || 28)
@@ -48,6 +49,11 @@ export const useSettingStore = defineStore('setting', () => {
   function setDebugMode(v) {
     debugMode.value = v
     setItem('debugMode', v)
+  }
+
+  function setShowSongDetail(v) {
+    showSongDetail.value = v
+    setItem('showSongDetail', v)
   }
 
   function addSearchHistory(keyword) {
@@ -107,8 +113,8 @@ export const useSettingStore = defineStore('setting', () => {
   document.documentElement.setAttribute('data-theme', theme.value)
 
   return {
-    apiBaseUrl, apiMode, apiPort, isFirstLaunch, downloadDir, theme, debugMode, searchHistory,
-    setApiBaseUrl, setApiMode, setApiPort, setDownloadDir, setTheme, setDebugMode,
+    apiBaseUrl, apiMode, apiPort, isFirstLaunch, downloadDir, theme, debugMode, searchHistory, showSongDetail,
+    setApiBaseUrl, setApiMode, setApiPort, setDownloadDir, setTheme, setDebugMode, setShowSongDetail,
     addSearchHistory, clearSearchHistory,
     lyricFontSize, lyricActiveFontSize, lyricLineHeight, lyricShowTranslation,
     lyricShowBlurBg, lyricBlurAmount, lyricBgOpacity, lyricFontFamily, lyricColor,

@@ -2,6 +2,20 @@ const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, globalShortcut } = requ
 const path = require('path')
 const fs = require('fs')
 const net = require('net')
+const { autoUpdater } = require('electron-updater')
+
+// 配置自动更新
+autoUpdater.autoDownload = false
+autoUpdater.autoInstallOnAppQuit = true
+autoUpdater.logger = console
+
+// 镜像站列表
+const MIRRORS = [
+  { name: 'GitHub', transform: (url) => url },
+  { name: 'ghproxy', transform: (url) => `https://ghproxy.com/${url}` },
+  { name: 'gh-proxy', transform: (url) => `https://gh-proxy.com/${url}` },
+  { name: 'mirror.ghproxy', transform: (url) => `https://mirror.ghproxy.com/${url}` }
+]
 
 let mainWindow
 let tray = null
@@ -260,4 +274,154 @@ ipcMain.handle('reset-app', () => {
   const storagePath = path.join(app.getPath('userData'), 'Local Storage')
   if (fs.existsSync(storagePath)) fs.rmSync(storagePath, { recursive: true, force: true })
   return true
+})
+
+// --- Update Handlers ---
+
+/** 获取当前平台信息 */
+function getPlatformInfo() {
+  return {
+    platform: process.platform,
+    arch: process.arch,
+    version: app.getVersion()
+  }
+}
+
+/** 根据平台过滤更新资源 */
+function filterAssetsByPlatform(assets) {
+  const { platform, arch } = getPlatformInfo()
+  
+  const patterns = {
+    darwin: ['.dmg', 'mac'],
+    win32: ['.exe', '.nsis', 'win'],
+    linux: ['.AppImage', '.deb', 'linux']
+  }
+  
+  const platformPatterns = patterns[platform] || []
+  
+  return assets.filter(asset => {
+    if (!asset || !asset.name) return false
+    
+    const name = asset.name.toLowerCase()
+    const matchesPlatform = platformPatterns.some(p => name.includes(p))
+    const matchesArch = arch === 'arm64'
+      ? name.includes('arm64') || name.includes('aarch64')
+      : !name.includes('arm64') && !name.includes('aarch64')
+    
+    return matchesPlatform && matchesArch
+  })
+}
+
+// IPC: 检查更新
+ipcMain.handle('check-for-updates', async () => {
+  try {
+    const result = await autoUpdater.checkForUpdates()
+    
+    if (!result || !result.updateInfo) {
+      return { hasUpdate: false }
+    }
+    
+    const { updateInfo } = result
+    const filteredAssets = filterAssetsByPlatform(updateInfo.files || [])
+    
+    return {
+      hasUpdate: result.isUpdateAvailable,
+      currentVersion: getPlatformInfo().version,
+      latestVersion: updateInfo.version,
+      downloadUrl: filteredAssets[0]?.url || updateInfo.files?.[0]?.url,
+      releaseNotes: updateInfo.releaseNotes || '',
+      releaseDate: updateInfo.releaseDate,
+      platform: getPlatformInfo().platform,
+      arch: getPlatformInfo().arch,
+      files: filteredAssets
+    }
+  } catch (error) {
+    console.error('[Updater] 检查更新失败:', error)
+    throw error
+  }
+})
+
+// IPC: 下载更新（支持镜像站）
+ipcMain.handle('download-update', async () => {
+  try {
+    // 监听下载进度
+    autoUpdater.on('download-progress', (progress) => {
+      mainWindow?.webContents.send('update-download-progress', {
+        percent: progress.percent,
+        bytesPerSecond: progress.bytesPerSecond,
+        transferred: progress.transferred,
+        total: progress.total
+      })
+    })
+    
+    await autoUpdater.downloadUpdate()
+    return { success: true }
+  } catch (error) {
+    console.error('[Updater] 下载更新失败，尝试镜像站...', error)
+    
+    // 尝试使用镜像站下载
+    try {
+      const result = await autoUpdater.checkForUpdates()
+      if (result?.updateInfo) {
+        const filteredAssets = filterAssetsByPlatform(result.updateInfo.files || [])
+        const asset = filteredAssets[0] || result.updateInfo.files?.[0]
+        
+        if (asset?.url) {
+          // 尝试每个镜像站
+          for (const mirror of MIRRORS) {
+            try {
+              const mirrorUrl = mirror.transform(asset.url)
+              console.log(`[Updater] 尝试镜像站: ${mirror.name}`)
+              
+              // 使用 Electron 的 net 模块下载
+              const https = require('https')
+              const downloadsPath = app.getPath('downloads')
+              const filePath = path.join(downloadsPath, asset.name)
+              
+              await new Promise((resolve, reject) => {
+                const file = fs.createWriteStream(filePath)
+                https.get(mirrorUrl, (response) => {
+                  // 处理重定向
+                  if (response.statusCode === 301 || response.statusCode === 302) {
+                    https.get(response.headers.location, (redirectResponse) => {
+                      redirectResponse.pipe(file)
+                      file.on('finish', () => {
+                        file.close()
+                        resolve()
+                      })
+                    }).on('error', reject)
+                  } else {
+                    response.pipe(file)
+                    file.on('finish', () => {
+                      file.close()
+                      resolve()
+                    })
+                  }
+                }).on('error', reject)
+              })
+              
+              console.log(`[Updater] 镜像站下载成功: ${mirror.name}`)
+              return { success: true, filePath, mirror: mirror.name }
+            } catch (mirrorError) {
+              console.warn(`[Updater] 镜像站 ${mirror.name} 失败:`, mirrorError.message)
+            }
+          }
+        }
+      }
+    } catch (fallbackError) {
+      console.error('[Updater] 镜像站下载也失败:', fallbackError)
+    }
+    
+    throw error
+  }
+})
+
+// IPC: 安装更新并重启
+ipcMain.handle('install-update', () => {
+  autoUpdater.quitAndInstall(false, true)
+})
+
+// IPC: 获取平台信息
+ipcMain.handle('get-platform-info', () => {
+  return getPlatformInfo()
 })

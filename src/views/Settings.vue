@@ -91,6 +91,14 @@
         </div>
       </div>
       <div class="setting-item">
+        <label class="setting-label">显示详细信息</label>
+        <label class="toggle-switch" @click.stop>
+          <input type="checkbox" :checked="settingStore.showSongDetail" @change="settingStore.setShowSongDetail($event.target.checked)" />
+          <span class="toggle-track"></span>
+        </label>
+        <span class="detail-hint">音质·码率·格式·大小</span>
+      </div>
+      <div class="setting-item">
         <label class="setting-label">下载目录</label>
         <div class="download-dir-row">
           <input v-model="downloadDir" type="text" class="input-field download-dir-input" placeholder="例如: ~/Music/CloudMusic" @blur="saveDownloadDir" @keydown.enter="saveDownloadDir" />
@@ -133,10 +141,23 @@
         <div class="about-logo"><Icon name="music" :size="24" /></div>
         <div class="about-info">
           <span class="about-title">CrossMusic</span>
-          <span class="about-version">版本 v0.0.6</span>
+          <span class="about-version">版本 v{{ currentVersion }}</span>
           <span class="about-author">作者: XiamengYaro</span>
           <a href="https://github.com/XiamengYaro/CrossMusic" target="_blank" class="about-link">GitHub: https://github.com/XiamengYaro/CrossMusic</a>
           <span class="about-license">许可证: MIT License</span>
+        </div>
+      </div>
+      <div class="update-section">
+        <button class="btn-update" @click="checkUpdate" :disabled="updateChecking">
+          <Icon v-if="updateChecking" name="spinner" :size="14" class="spinner" />
+          <span v-else>检查更新</span>
+        </button>
+        <div v-if="updateStatus" class="update-status" :class="updateStatusClass">
+          {{ updateStatus }}
+        </div>
+        <div v-if="hasUpdate" class="update-info">
+          <p>发现新版本 v{{ latestVersion }}</p>
+          <a v-if="downloadUrl" :href="downloadUrl" target="_blank" class="btn-download-update">下载更新</a>
         </div>
       </div>
     </div>
@@ -151,6 +172,7 @@ import { useUserStore } from '@/stores/user'
 import { usePlayerStore } from '@/stores/player'
 import { testConnection, setBaseURL } from '@/api/request'
 import { checkApiStatus, startApiServer, stopApiServer, selectDirectory, readLog, clearLogs, clearAllData, resetApp } from '@/utils/tauri-api'
+import { checkForUpdates } from '@/api/update'
 import Icon from '@/components/icons/Icon.vue'
 
 const settingStore = useSettingStore()
@@ -171,6 +193,15 @@ const debugStatus = ref('')
 const debugStatusClass = ref('')
 const showLogContent = ref(false)
 const logContent = ref('')
+
+// 更新相关
+const currentVersion = ref('0.0.6')
+const updateChecking = ref(false)
+const updateStatus = ref('')
+const updateStatusClass = ref('')
+const hasUpdate = ref(false)
+const latestVersion = ref('')
+const downloadUrl = ref('')
 
 const qualityOptions = computed(() => playerStore.availableQualities)
 const modeOptions = [
@@ -260,6 +291,32 @@ async function handleReset() {
   setTimeout(() => { location.reload() }, 1000)
 }
 
+async function checkUpdate() {
+  updateChecking.value = true
+  updateStatus.value = '正在检查更新...'
+  updateStatusClass.value = 'status-info'
+  hasUpdate.value = false
+  
+  try {
+    const result = await checkForUpdates()
+    if (result.hasUpdate) {
+      hasUpdate.value = true
+      latestVersion.value = result.latestVersion
+      downloadUrl.value = result.downloadUrl
+      updateStatus.value = `发现新版本 v${result.latestVersion}`
+      updateStatusClass.value = 'status-success'
+    } else {
+      updateStatus.value = '当前已是最新版本'
+      updateStatusClass.value = 'status-ok'
+    }
+  } catch (e) {
+    updateStatus.value = e.message || '检查更新失败'
+    updateStatusClass.value = 'status-err'
+  } finally {
+    updateChecking.value = false
+  }
+}
+
 onMounted(() => {
   refreshStatus()
   // 滚动到锚点位置
@@ -341,6 +398,43 @@ onMounted(() => {
 .about-link:hover { text-decoration: underline; }
 .about-license { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
 
+.update-section { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.btn-update { 
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; 
+  background: var(--accent); 
+  color: white; 
+  border-radius: var(--radius-md); 
+  font-size: 13px; 
+  font-weight: 500; 
+  transition: all 0.15s; 
+  align-self: flex-start;
+}
+.btn-update:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-update:disabled { opacity: 0.5; cursor: not-allowed; }
+.update-status { font-size: 12px; padding: 6px 10px; border-radius: var(--radius-sm); }
+.update-info { 
+  margin-top: 8px; 
+  padding: 12px; 
+  background: rgba(46, 213, 115, 0.06); 
+  border: 1px solid rgba(46, 213, 115, 0.15); 
+  border-radius: var(--radius-md); 
+}
+.update-info p { font-size: 13px; color: var(--text-primary); margin-bottom: 8px; }
+.btn-download-update { 
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; 
+  background: var(--green); 
+  color: white; 
+  border-radius: var(--radius-sm); 
+  font-size: 12px; 
+  text-decoration: none; 
+  transition: all 0.15s;
+}
+.btn-download-update:hover { opacity: 0.9; }
+.spinner { animation: spin 0.6s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
 .api-server-control { margin-top: 12px; padding: 12px 14px; background: rgba(128,128,128,0.06); border: 1px solid var(--border-light); border-radius: 8px; }
 .api-server-row { display: flex; align-items: center; justify-content: space-between; }
 .api-server-info { display: flex; align-items: center; gap: 8px; }
@@ -368,4 +462,5 @@ onMounted(() => {
 .btn-browse { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: rgba(128,128,128,0.08); border: 1px solid var(--border-light); border-radius: var(--radius-sm); color: var(--text-secondary); transition: all 0.15s; flex-shrink: 0; }
 .btn-browse:hover { background: rgba(128,128,128,0.15); color: var(--text-primary); }
 .api-server-addr { font-size: 11px; color: var(--text-tertiary); margin-top: 8px; font-family: monospace; }
+.detail-hint { font-size: 11px; color: var(--text-tertiary); margin-left: 4px; }
 </style>

@@ -15,20 +15,21 @@
       <div class="song-meta">
         <span class="song-name text-ellipsis">{{ playerStore.currentSong?.name || '未播放' }}</span>
         <span class="song-artist text-ellipsis">{{ artistNames }}</span>
+        <span v-if="settingStore.showSongDetail && songDetailText" class="song-detail text-ellipsis">{{ songDetailText }}</span>
       </div>
-      <button
-        v-if="playerStore.currentSong"
-        class="btn-like"
-        @click="toggleLike"
-        :title="isLiked ? '取消喜欢' : '喜欢'"
-      >
-        <Icon :name="isLiked ? 'heartFilled' : 'heart'" :size="16" />
-      </button>
     </div>
 
     <!-- Center: Controls -->
     <div class="player-center">
       <div class="controls">
+        <button
+          v-if="playerStore.currentSong"
+          class="ctrl-btn btn-like"
+          @click="toggleLike"
+          :title="isLiked ? '取消喜欢' : '喜欢'"
+        >
+          <Icon :name="isLiked ? 'heartFilled' : 'heart'" :size="16" />
+        </button>
         <button class="ctrl-btn" :title="modeTitle" @click="toggleMode">
           <Icon :name="modeIconName" :size="16" />
         </button>
@@ -67,7 +68,7 @@
             v-for="q in qualityOptions"
             :key="q.value"
             class="quality-option"
-            :class="{ active: playerStore.quality === q.value }"
+            :class="{ active: playerStore.currentQuality === q.value }"
             @click="selectQuality(q.value)"
           >
             {{ q.label }}
@@ -76,13 +77,14 @@
       </div>
 
       <!-- Volume -->
-      <div class="volume-control">
+      <div class="volume-control" ref="volumeControlRef">
         <button class="ctrl-btn vol-btn" @click="toggleMute">
           <Icon :name="volumeIconName" :size="16" />
         </button>
         <div class="vol-slider-wrap">
-          <div class="vol-track" @click="setVolume">
+          <div class="vol-track" @mousedown="onVolMouseDown">
             <div class="vol-fill" :style="{ width: (playerStore.volume * 100) + '%' }"></div>
+            <div class="vol-thumb" :style="{ left: (playerStore.volume * 100) + '%' }"></div>
           </div>
         </div>
       </div>
@@ -131,10 +133,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted, watch } from 'vue'
 import { usePlayerStore } from '@/stores/player'
 import { useUserStore } from '@/stores/user'
-import { likeSong } from '@/api/song'
+import { useSettingStore } from '@/stores/setting'
+import { likeSong, getLikelist } from '@/api/song'
 import { getItem, setItem } from '@/utils/storage'
 import { formatTime } from '@/utils/format'
 import { showToast } from '@/utils/toast'
@@ -144,6 +147,7 @@ import Icon from '@/components/icons/Icon.vue'
 const emit = defineEmits(['toggle-lyric'])
 const playerStore = usePlayerStore()
 const userStore = useUserStore()
+const settingStore = useSettingStore()
 const showQuality = ref(false)
 const showPlaylist = ref(false)
 const prevVolume = ref(0.7)
@@ -157,6 +161,26 @@ const artistNames = computed(() => {
   if (!song) return ''
   return (song.ar || song.artists || []).map((a) => a.name).join(' / ')
 })
+
+const songDetailText = computed(() => {
+  const d = playerStore.songDetail
+  if (!d) return ''
+  const parts = []
+  if (d.level) {
+    const levelMap = { jymaster: '超清母带', hires: 'Hi-Res', lossless: '无损', exhigh: '极高', higher: '较高', standard: '标准', local: '本地' }
+    parts.push(levelMap[d.level] || d.level)
+  }
+  if (d.bitrate) parts.push(`${Math.round(d.bitrate / 1000)}kbps`)
+  if (d.format) parts.push(d.format.toUpperCase())
+  if (d.size) parts.push(formatFileSize(d.size))
+  return parts.join(' · ')
+})
+
+function formatFileSize(bytes) {
+  if (!bytes) return ''
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + 'KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + 'MB'
+}
 
 const qualityOptions = computed(() => playerStore.availableQualities)
 
@@ -186,6 +210,23 @@ const isLiked = computed(() => {
   const song = playerStore.currentSong
   return song ? likedSet.value.has(song.id) : false
 })
+
+// 从服务器同步喜欢列表
+async function syncLikelist() {
+  if (!userStore.userId) return
+  try {
+    const res = await getLikelist(userStore.userId)
+    if (res.ids && Array.isArray(res.ids)) {
+      likedSet.value = new Set(res.ids)
+      setItem('likedIds', res.ids)
+    }
+  } catch (e) {
+    console.warn('同步喜欢列表失败:', e)
+  }
+}
+
+// 用户登录后自动同步
+watch(() => userStore.userId, (uid) => { if (uid) syncLikelist() }, { immediate: true })
 
 async function toggleLike() {
   const song = playerStore.currentSong
@@ -228,14 +269,30 @@ function toggleMute() {
   }
 }
 
-function setVolume(e) {
-  const rect = e.currentTarget.getBoundingClientRect()
-  const val = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-  playerStore.setVolume(val)
+const volumeControlRef = ref(null)
+
+function onVolMouseDown(e) {
+  const track = e.currentTarget
+  const rect = track.getBoundingClientRect()
+  const setVal = (clientX) => {
+    const val = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    playerStore.setVolume(val)
+  }
+  setVal(e.clientX)
+  const onMove = (ev) => {
+    ev.preventDefault()
+    setVal(ev.clientX)
+  }
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+  }
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
 }
 
 function selectQuality(q) {
-  playerStore.setQuality(q)
+  playerStore.setTempQuality(q)
   showQuality.value = false
 }
 
@@ -361,6 +418,13 @@ function onDrop(targetIdx) {
   max-width: 160px;
 }
 
+.song-detail {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  max-width: 160px;
+  opacity: 0.8;
+}
+
 .btn-like {
   color: var(--text-tertiary);
   transition: color 0.15s;
@@ -462,15 +526,16 @@ function onDrop(targetIdx) {
   display: flex;
   align-items: center;
   gap: 12px;
-  width: 220px;
+  width: 300px;
   justify-content: flex-end;
   flex-shrink: 0;
   position: relative;
 }
 
-.quality-selector { position: relative; }
+.quality-selector { position: relative; flex-shrink: 0; }
 
 .quality-btn {
+  white-space: nowrap;
   padding: 4px 10px;
   background: rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-sm);
@@ -492,7 +557,9 @@ function onDrop(targetIdx) {
   box-shadow: var(--shadow-md);
   overflow: hidden;
   z-index: 100;
-  min-width: 80px;
+  display: flex;
+  flex-direction: column;
+  min-width: 100px;
 }
 
 .quality-option {
@@ -508,23 +575,41 @@ function onDrop(targetIdx) {
 
 .volume-control { display: flex; align-items: center; gap: 6px; }
 .vol-btn { width: 28px; height: 28px; }
-.vol-slider-wrap { width: 80px; }
+.vol-slider-wrap { width: 120px; padding: 10px 0; }
 
 .vol-track {
   width: 100%;
-  height: 4px;
+  height: 6px;
   background: rgba(255, 255, 255, 0.08);
-  border-radius: 2px;
+  border-radius: 3px;
+  position: relative;
   cursor: pointer;
 }
 
 .vol-fill {
   height: 100%;
   background: var(--text-secondary);
-  border-radius: 2px;
-  transition: width 0.1s;
+  border-radius: 3px;
+  transition: none;
 }
-.vol-track:hover .vol-fill { background: var(--accent); }
+.vol-track:hover .vol-fill,
+.vol-track:active .vol-fill { background: var(--accent); }
+
+.vol-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+.vol-track:hover .vol-thumb,
+.vol-track:active .vol-thumb { opacity: 1; }
 
 .playlist-btn { width: 28px; height: 28px; }
 

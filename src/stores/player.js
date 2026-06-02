@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { getSongUrl, getSongDetail } from '@/api/song'
 import { getItem, setItem } from '@/utils/storage'
 
+// 音质等级从高到低排列（移除环绕声和杜比）
 const QUALITY_LEVELS = ['jymaster', 'hires', 'lossless', 'exhigh', 'higher', 'standard']
 const QUALITY_LABELS = {
   jymaster: '超清母带', hires: 'Hi-Res', lossless: '无损',
@@ -15,6 +16,9 @@ function getQualityFallback(currentQuality) {
   return QUALITY_LEVELS.slice(idx)
 }
 
+// 音质信息缓存
+const qualityCache = new Map()
+
 export const usePlayerStore = defineStore('player', () => {
   const audio = ref(null)
   const playlist = ref([])
@@ -24,11 +28,13 @@ export const usePlayerStore = defineStore('player', () => {
   const duration = ref(0)
   const volume = ref(getItem('volume') ?? 0.7)
   const playMode = ref(getItem('playMode') || 'sequence')
-  const quality = ref(getItem('quality') || 'exhigh')
+  const quality = ref(getItem('quality') || 'exhigh') // 默认音质（设置中）
+  const tempQuality = ref('') // 临时音质（下拉栏选择，播放新歌时重置）
   const songUrl = ref('')
   const loading = ref(false)
   const playQuality = ref('')
   const maxAvailableQuality = ref('standard')
+  const songDetail = ref(null) // { bitrate, format, size, type }
 
   const currentSong = computed(() => {
     if (currentIndex.value >= 0 && currentIndex.value < playlist.value.length) {
@@ -43,9 +49,8 @@ export const usePlayerStore = defineStore('player', () => {
   })
 
   const availableQualities = computed(() => {
-    const idx = QUALITY_LEVELS.indexOf(maxAvailableQuality.value)
-    if (idx < 0) return QUALITY_LEVELS.map(q => ({ label: QUALITY_LABELS[q], value: q }))
-    return QUALITY_LEVELS.slice(idx).map(q => ({ label: QUALITY_LABELS[q], value: q }))
+    // 始终显示所有音质选项
+    return QUALITY_LEVELS.map(q => ({ label: QUALITY_LABELS[q], value: q }))
   })
 
   const currentQualityLabel = computed(() => {
@@ -65,28 +70,62 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   async function fetchSongUrl(songId) {
-    const levels = getQualityFallback(quality.value)
-    let foundMax = null
+    // 检查缓存
+    if (qualityCache.has(songId)) {
+      const cached = qualityCache.get(songId)
+      maxAvailableQuality.value = cached.maxQuality
+    } else {
+      // 使用 /song/detail 接口获取歌曲详情，判断支持的最高音质
+      try {
+        const detailRes = await getSongDetail(songId)
+        const songData = detailRes.songs?.[0]
+        
+        if (songData) {
+          // 根据 hr, sq, h, m, l 字段判断支持的音质
+          // hr: Hi-Res, sq: 无损, h: 高质量, m: 中质量, l: 低质量
+          if (songData.hr) {
+            maxAvailableQuality.value = 'hires'
+          } else if (songData.sq) {
+            maxAvailableQuality.value = 'lossless'
+          } else if (songData.h) {
+            maxAvailableQuality.value = 'exhigh'
+          } else if (songData.m) {
+            maxAvailableQuality.value = 'higher'
+          } else {
+            maxAvailableQuality.value = 'standard'
+          }
+          
+          // 缓存结果
+          qualityCache.set(songId, { maxQuality: maxAvailableQuality.value })
+        }
+      } catch (e) {
+        console.warn('获取歌曲详情失败:', e)
+        maxAvailableQuality.value = 'standard'
+      }
+    }
+
+    // 按用户选择的音质（或降级）获取实际播放 URL
+    // 优先使用临时音质，否则使用默认音质
+    const selectedQuality = tempQuality.value || quality.value
+    const levels = getQualityFallback(selectedQuality)
     for (const level of levels) {
       try {
         const res = await getSongUrl(songId, level)
         const urlData = res.data?.[0]
         if (urlData?.url) {
-          if (!foundMax) {
-            foundMax = level
-            maxAvailableQuality.value = level
-            // 如果当前选择的音质不可用，自动降级
-            if (QUALITY_LEVELS.indexOf(level) > QUALITY_LEVELS.indexOf(quality.value)) {
-              quality.value = level
-              setItem('quality', level)
-            }
+          const actualLevel = urlData.level || level
+          playQuality.value = actualLevel
+          songDetail.value = {
+            bitrate: urlData.br,
+            format: urlData.type,
+            size: urlData.size,
+            level: actualLevel,
+            fee: urlData.fee,
+            freeTrialInfo: urlData.freeTrialInfo,
           }
-          playQuality.value = level
           return urlData.url
         }
-      } catch (e) {
-        console.warn(`获取 ${level} 音质失败，尝试降级...`)
-      }
+      } catch {}
     }
     return null
   }
@@ -209,21 +248,61 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function setPlayMode(mode) { playMode.value = mode; setItem('playMode', mode) }
-  function setQuality(q) { quality.value = q; setItem('quality', q) }
+  
+  // 设置默认音质（设置中）
+  async function setQuality(q) {
+    quality.value = q
+    setItem('quality', q)
+    // 清除临时音质
+    tempQuality.value = ''
+    // 如果正在播放，切换音质后重新加载当前歌曲
+    if (songUrl.value && currentSong.value && !currentSong.value._isLocal) {
+      const url = await fetchSongUrl(currentSong.value.id)
+      if (url) {
+        const wasPlaying = isPlaying.value
+        const curTime = audio.value.currentTime
+        songUrl.value = url
+        audio.value.src = url
+        audio.value.currentTime = curTime
+        if (wasPlaying) await audio.value.play()
+      }
+    }
+  }
+
+  // 设置临时音质（下拉栏）
+  async function setTempQuality(q) {
+    tempQuality.value = q
+    // 如果正在播放，切换音质后重新加载当前歌曲
+    if (songUrl.value && currentSong.value && !currentSong.value._isLocal) {
+      const url = await fetchSongUrl(currentSong.value.id)
+      if (url) {
+        const wasPlaying = isPlaying.value
+        const curTime = audio.value.currentTime
+        songUrl.value = url
+        audio.value.src = url
+        audio.value.currentTime = curTime
+        if (wasPlaying) await audio.value.play()
+      }
+    }
+  }
+
+  // 获取当前使用的音质（优先临时音质）
+  const currentQuality = computed(() => tempQuality.value || quality.value)
 
   function clearPlaylist() {
     if (audio.value) { audio.value.pause(); audio.value.src = '' }
     playlist.value = []; currentIndex.value = -1; isPlaying.value = false
     currentTime.value = 0; duration.value = 0; songUrl.value = ''
     playQuality.value = ''; maxAvailableQuality.value = 'standard'
+    tempQuality.value = ''
   }
 
   return {
     audio, playlist, currentIndex, isPlaying, currentTime, duration,
-    volume, playMode, quality, songUrl, loading, playQuality,
+    volume, playMode, quality, tempQuality, currentQuality, songUrl, loading, playQuality,
     maxAvailableQuality, availableQualities, currentQualityLabel,
-    currentSong, progress, initAudio, playSong, togglePlay,
-    playNext, playPrev, seekTo, setVolume, setPlayMode, setQuality,
+    currentSong, progress, songDetail, initAudio, playSong, togglePlay,
+    playNext, playPrev, seekTo, setVolume, setPlayMode, setQuality, setTempQuality,
     clearPlaylist, downloadSong,
   }
 })

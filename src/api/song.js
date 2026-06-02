@@ -15,6 +15,11 @@ export function likeSong(id, like = true) {
   return request.get('/like', { params: { id, like } })
 }
 
+/** 获取喜欢的音乐列表 */
+export function getLikelist(uid) {
+  return request.get('/likelist', { params: { uid } })
+}
+
 /** 获取歌词 */
 export function getLyric(id) {
   return request.get('/lyric', { params: { id } })

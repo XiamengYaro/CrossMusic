@@ -54,16 +54,23 @@
       @close="ctxMenu.visible = false"
       @open-comments="$emit('open-comments', $event)"
     />
+    <DownloadDialog
+      v-if="showDownloadDialog"
+      :song="downloadSongData"
+      :max-quality="downloadMaxQuality"
+      @close="showDownloadDialog = false"
+    />
   </div>
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/player'
 import { formatTime } from '@/utils/format'
 import Icon from '@/components/icons/Icon.vue'
 import SongContextMenu from '@/components/SongContextMenu.vue'
+import DownloadDialog from '@/components/DownloadDialog.vue'
 
 const props = defineProps({
   songs: { type: Array, default: () => [] },
@@ -74,6 +81,11 @@ defineEmits(['open-comments'])
 
 const router = useRouter()
 const playerStore = usePlayerStore()
+
+// 下载对话框状态
+const showDownloadDialog = ref(false)
+const downloadSongData = ref(null)
+const downloadMaxQuality = ref('standard')
 
 function playSong(song) {
   playerStore.playSong(song, props.songs)
@@ -106,11 +118,28 @@ function goAlbum(id) {
 }
 
 async function downloadSong(song) {
+  downloadSongData.value = song
+  // 检测歌曲支持的最高音质
   try {
-    await playerStore.downloadSong(song)
+    const { getSongMusicDetail } = await import('@/api/song')
+    const res = await getSongMusicDetail(song.id)
+    const musicDetail = res.data
+    const QUALITY_LEVELS = ['jymaster', 'sky', 'dolby', 'jyeffect', 'hires', 'lossless', 'exhigh', 'higher', 'standard']
+    let maxQuality = 'standard'
+    if (musicDetail) {
+      for (const level of QUALITY_LEVELS) {
+        if (musicDetail[level] && musicDetail[level].br > 0) {
+          maxQuality = level
+          break
+        }
+      }
+    }
+    downloadMaxQuality.value = maxQuality
   } catch (e) {
-    console.error('下载失败:', e)
+    console.warn('获取音质详情失败:', e)
+    downloadMaxQuality.value = 'standard'
   }
+  showDownloadDialog.value = true
 }
 </script>
 

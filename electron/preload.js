@@ -15,4 +15,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   clearLogs: () => ipcRenderer.invoke('clear-logs'),
   clearAllData: () => ipcRenderer.invoke('clear-all-data'),
   resetApp: () => ipcRenderer.invoke('reset-app'),
+  
+  // 更新相关 API
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  downloadUpdate: () => ipcRenderer.invoke('download-update'),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  getPlatformInfo: () => ipcRenderer.invoke('get-platform-info'),
+  
+  // 下载进度监听
+  onUpdateProgress: (callback) => {
+    ipcRenderer.on('update-download-progress', (_event, progress) => {
+      callback(progress)
+    })
+  },
+  removeUpdateProgressListener: () => {
+    ipcRenderer.removeAllListeners('update-download-progress')
+  }
 })

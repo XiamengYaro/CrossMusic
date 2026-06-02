@@ -57,7 +57,7 @@ export function cloudUpload(file, onProgress) {
 
     xhr.addEventListener('error', () => reject(new Error('网络错误')))
     xhr.addEventListener('timeout', () => reject(new Error('上传超时')))
-    xhr.open('POST', `${baseURL}/cloud/upload`)
+    xhr.open('POST', `${baseURL}/cloud`)
     xhr.timeout = 600000
     xhr.send(formData)
   })

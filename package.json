@@ -1,7 +1,7 @@
 {
   "name": "CrossMusic",
   "private": true,
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "CrossMusic - 网易云音乐桌面客户端",
   "author": {
     "name": "XiamengYaro",
@@ -33,6 +33,12 @@
   "build": {
     "appId": "com.crossmusic.app",
     "productName": "CrossMusic",
+    "publish": [{
+      "provider": "github",
+      "owner": "XiamengYaro",
+      "repo": "CrossMusic",
+      "releaseType": "release"
+    }],
     "mac": {
       "category": "public.app-category.music",
       "icon": "build/icon.icns",
@@ -48,18 +54,25 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "installerLanguages": ["zh_CN", "en_US"],
+      "installerLanguages": [
+        "zh_CN",
+        "en_US"
+      ],
       "language": "2052"
     },
     "linux": {
@@ -87,9 +100,11 @@
     "axios": "^1.16.1",
     "crypto-js": "^4.2.0",
     "dotenv": "^17.4.2",
+    "electron-updater": "^6.8.3",
     "express": "^5.2.1",
     "express-fileupload": "^1.5.2",
     "gzip": "^0.1.0",
+    "marked": "^18.0.4",
     "music-metadata": "^11.12.3",
     "node-forge": "^1.4.0",
     "pac-proxy-agent": "^7.2.0",
