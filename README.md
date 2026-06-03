@@ -2,6 +2,7 @@
 
 基于 **Electron + Vue 3 + Vite** 构建的网易云音乐桌面客户端，支持 macOS、Windows、Linux 多平台。
 
+![image](https://github.com/XiamengYaro/CrossMusic/blob/main/photo.png)
 
 ## ✨ 功能特性
 
