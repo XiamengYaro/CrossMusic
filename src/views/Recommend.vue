@@ -8,7 +8,7 @@
         <h2 class="section-title">每日推荐</h2>
         <button class="btn-more" @click="goDailyRecommend">更多</button>
       </div>
-      <div class="song-grid">
+      <div class="song-grid stagger-in">
         <div
           v-for="song in dailySongs.slice(0, 10)"
           :key="song.id"
@@ -27,7 +27,7 @@
       <div class="section-header">
         <h2 class="section-title">推荐歌单</h2>
       </div>
-      <div class="playlist-grid">
+      <div class="playlist-grid stagger-in">
         <div
           v-for="pl in playlists"
           :key="pl.id"
@@ -48,7 +48,7 @@
       <div class="section-header">
         <h2 class="section-title">新歌速递</h2>
       </div>
-      <div class="new-songs-grid">
+      <div class="new-songs-grid stagger-in">
         <div
           v-for="item in newSongs.slice(0, 12)"
           :key="item.id"
@@ -119,23 +119,23 @@ function goDailyRecommend() { router.push('/daily') }
 .btn-more:hover { background: rgba(255,255,255,0.12); color: var(--text-primary); }
 
 .song-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
-.song-card { cursor: pointer; transition: transform 0.2s; }
-.song-card:hover { transform: translateY(-4px); }
+.song-card { cursor: pointer; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.song-card:hover { transform: translateY(-4px) scale(1.02); }
 .song-card-img { width: 100%; aspect-ratio: 1; border-radius: var(--radius-md); object-fit: cover; }
 .song-card-name { font-size: 13px; font-weight: 500; margin-top: 8px; }
 .song-card-artist { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 
 .playlist-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 20px; }
-.playlist-card { cursor: pointer; transition: transform 0.2s; }
-.playlist-card:hover { transform: translateY(-4px); }
+.playlist-card { cursor: pointer; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.playlist-card:hover { transform: translateY(-4px) scale(1.02); }
 .playlist-cover-wrap { position: relative; border-radius: var(--radius-md); overflow: hidden; }
 .playlist-cover { width: 100%; aspect-ratio: 1; object-fit: cover; }
 .play-count { position: absolute; top: 6px; right: 8px; font-size: 11px; color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
 .playlist-name { font-size: 13px; margin-top: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
 .new-songs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
-.new-song-item { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s; }
-.new-song-item:hover { background: var(--bg-hover); }
+.new-song-item { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.new-song-item:hover { background: var(--bg-hover); transform: scale(1.01); }
 .new-song-img { width: 48px; height: 48px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; }
 .new-song-info { display: flex; flex-direction: column; min-width: 0; }
 .new-song-name { font-size: 14px; font-weight: 500; }

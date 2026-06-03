@@ -500,7 +500,7 @@ async function handleLoginSuccess(cookie) {
   padding: 40px;
   box-shadow: var(--shadow-lg);
   border: var(--glass-border);
-  animation: slideUp 0.3s ease;
+  animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   position: relative;
 }
 
@@ -522,17 +522,20 @@ async function handleLoginSuccess(cookie) {
 .welcome-icon {
   margin-bottom: 16px;
   color: var(--accent);
+  animation: bounceIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
 }
 
 .modal-header h2 {
   font-size: 22px;
   font-weight: 600;
   margin-bottom: 8px;
+  animation: slideDown 0.4s ease 0.2s both;
 }
 
 .subtitle {
   color: var(--text-secondary);
   font-size: 14px;
+  animation: slideDown 0.4s ease 0.3s both;
 }
 
 .step-content {
@@ -540,6 +543,7 @@ async function handleLoginSuccess(cookie) {
   flex-direction: column;
   gap: 12px;
   position: relative;
+  animation: slideUp 0.35s ease 0.15s both;
 }
 
 .input-label {
@@ -553,6 +557,9 @@ async function handleLoginSuccess(cookie) {
   flex-direction: column;
   gap: 8px;
 }
+
+.api-options .api-option:nth-child(1) { animation: slideInLeft 0.35s ease 0.2s both; }
+.api-options .api-option:nth-child(2) { animation: slideInLeft 0.35s ease 0.3s both; }
 
 .api-option {
   display: flex;

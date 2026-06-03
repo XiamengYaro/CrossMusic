@@ -1,6 +1,6 @@
 <template>
-  <div class="page">
-    <h1 class="page-title">设置</h1>
+  <div class="page stagger-in">
+    <h1 class="page-title" style="animation: slideUp 0.35s ease both">设置</h1>
 
     <!-- Theme Settings -->
     <div class="setting-section">

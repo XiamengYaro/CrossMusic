@@ -6,7 +6,7 @@
           <span class="dialog-title">评论 - {{ song?.name }}</span>
           <button class="dialog-close" @click="$emit('close')"><Icon name="close" :size="18" /></button>
         </div>
-        <div class="comment-list" ref="listRef">
+        <div class="comment-list stagger-in" ref="listRef">
           <div v-if="loading" class="loading"><span class="spinner"></span></div>
           <div v-for="c in comments" :key="c.commentId" class="comment-item">
             <img v-if="c.user?.avatarUrl" :src="c.user.avatarUrl + '?param=40y40'" class="avatar" />
@@ -108,6 +108,7 @@ function formatCommentTime(ts) {
   display: flex;
   align-items: center;
   justify-content: center;
+  animation: fadeIn 0.2s ease;
 }
 
 .comment-dialog {
@@ -122,6 +123,7 @@ function formatCommentTime(ts) {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .dialog-header {

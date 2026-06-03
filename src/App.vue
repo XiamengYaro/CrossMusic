@@ -11,7 +11,7 @@
       <div class="main-content">
         <div class="content-wrapper">
           <router-view v-slot="{ Component }">
-            <transition name="fade" mode="out-in">
+            <transition name="slide-left" mode="out-in">
               <component :is="Component" />
             </transition>
           </router-view>

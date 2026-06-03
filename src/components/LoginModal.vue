@@ -368,7 +368,7 @@ async function handleLoginSuccess(cookie) {
   padding: 32px;
   box-shadow: var(--shadow-lg);
   border: var(--glass-border);
-  animation: slideUp 0.3s ease;
+  animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   position: relative;
 }
 .modal-container::before {

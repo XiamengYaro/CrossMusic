@@ -280,10 +280,10 @@ watch(() => userStore.userId, (val) => { if (val) loadPlaylists() })
 .menu-section { padding: 8px; }
 .menu-item {
   display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: var(--radius-sm);
-  cursor: pointer; transition: all 0.15s; font-size: 13px; color: var(--text-secondary);
+  cursor: pointer; transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); font-size: 13px; color: var(--text-secondary);
 }
-.menu-item:hover { background: rgba(255, 255, 255, 0.06); color: var(--text-primary); }
-.menu-item.active { background: var(--accent-light); color: var(--accent); }
+.menu-item:hover { background: rgba(255, 255, 255, 0.06); color: var(--text-primary); transform: translateX(2px); }
+.menu-item.active { background: var(--accent-light); color: var(--accent); transform: translateX(3px); }
 .menu-icon { width: 22px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .menu-label { flex: 1; min-width: 0; }
 

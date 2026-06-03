@@ -27,7 +27,7 @@
     </div>
 
     <!-- Artists -->
-    <div v-else-if="searchType === 100" class="artist-grid">
+    <div v-else-if="searchType === 100" class="artist-grid stagger-in">
       <div
         v-for="artist in results"
         :key="artist.id"
@@ -40,7 +40,7 @@
     </div>
 
     <!-- Albums -->
-    <div v-else-if="searchType === 10" class="album-grid">
+    <div v-else-if="searchType === 10" class="album-grid stagger-in">
       <div
         v-for="album in results"
         :key="album.id"
@@ -272,11 +272,12 @@ watch(() => route.query.keywords, (val) => {
   padding: 16px 8px;
   border-radius: var(--radius-lg);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .artist-card:hover {
   background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-4px);
 }
 
 .artist-img {
@@ -285,6 +286,11 @@ watch(() => route.query.keywords, (val) => {
   border-radius: 50%;
   object-fit: cover;
   margin-bottom: 10px;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.artist-card:hover .artist-img {
+  transform: scale(1.08);
 }
 
 .artist-name {
@@ -305,11 +311,12 @@ watch(() => route.query.keywords, (val) => {
   cursor: pointer;
   padding: 8px;
   border-radius: var(--radius-lg);
-  transition: background 0.15s;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .album-card:hover {
   background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-4px);
 }
 
 .album-img {
@@ -318,6 +325,11 @@ watch(() => route.query.keywords, (val) => {
   object-fit: cover;
   border-radius: var(--radius-md);
   margin-bottom: 8px;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.album-card:hover .album-img {
+  transform: scale(1.03);
 }
 
 .album-name {

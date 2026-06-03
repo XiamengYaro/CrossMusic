@@ -176,7 +176,7 @@ async function startDownload() {
   width: 360px;
   box-shadow: var(--shadow-lg);
   border: var(--glass-border);
-  animation: slideUp 0.3s ease;
+  animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   display: flex;
   flex-direction: column;
 }
@@ -325,20 +325,5 @@ async function startDownload() {
 
 .spinner {
   animation: spin 0.6s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
 }
 </style>

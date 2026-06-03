@@ -1,10 +1,10 @@
 <template>
   <div class="album-detail" v-if="album">
     <div class="album-header">
-      <img :src="`${album.picUrl || ''}?param=200y200`" class="album-cover" />
+      <img :src="`${album.picUrl || ''}?param=200y200`" class="album-cover" style="animation: scaleIn 0.4s ease both" />
       <div class="album-info">
-        <div class="album-label">专辑</div>
-        <h1 class="album-name">{{ album.name }}</h1>
+        <div class="album-label" style="animation: slideInLeft 0.3s ease 0.1s both">专辑</div>
+        <h1 class="album-name" style="animation: slideUp 0.35s ease 0.15s both">{{ album.name }}</h1>
         <div class="album-meta">
           <span>歌手: <span class="link" @click="goArtist(album.artist?.id)">{{ album.artist?.name }}</span></span>
           <span>{{ formatCount(album.size || 0) }} 首</span>

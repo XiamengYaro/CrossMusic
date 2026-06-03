@@ -7,10 +7,10 @@
         <span>返回</span>
       </button>
       <div class="artist-header">
-        <img :src="artistPic" class="artist-cover" />
+        <img :src="artistPic" class="artist-cover" style="animation: scaleIn 0.4s ease both" />
         <div class="artist-info">
-          <span class="tag">歌手</span>
-          <h1 class="artist-name">{{ artistName }}</h1>
+          <span class="tag" style="animation: slideInLeft 0.3s ease 0.1s both">歌手</span>
+          <h1 class="artist-name" style="animation: slideUp 0.35s ease 0.15s both">{{ artistName }}</h1>
           <div class="artist-meta">
             <span v-if="artistDetail?.musicSize">歌曲: {{ artistDetail.musicSize }}</span>
             <span v-if="artistDetail?.albumSize">专辑: {{ artistDetail.albumSize }}</span>

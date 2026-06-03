@@ -9,8 +9,8 @@
       <div class="playlist-header">
         <img :src="playlist.coverImgUrl + '?param=300y300'" class="playlist-cover" />
         <div class="playlist-info">
-          <span class="tag">歌单</span>
-          <h1 class="playlist-name">{{ playlist.name }}</h1>
+          <span class="tag" style="animation: slideInLeft 0.3s ease 0.1s both">歌单</span>
+          <h1 class="playlist-name" style="animation: slideUp 0.35s ease 0.15s both">{{ playlist.name }}</h1>
           <div class="creator" v-if="playlist.creator">
             <img :src="playlist.creator.avatarUrl + '?param=40y40'" class="creator-avatar" />
             <span class="creator-name">{{ playlist.creator.nickname }}</span>
