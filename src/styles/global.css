@@ -43,6 +43,21 @@
   --glass-border: 1px solid rgba(255, 255, 255, 0.08);
   --glass-highlight: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0) 50%, rgba(255, 255, 255, 0.03) 100%);
 
+  /* Sidebar & PlayerBar theme */
+  --panel-bg: rgba(30, 30, 30, 0.75);
+  --panel-border: 1px solid rgba(255, 255, 255, 0.08);
+  --panel-hover: rgba(255, 255, 255, 0.06);
+  --panel-hover-strong: rgba(255, 255, 255, 0.1);
+  --panel-input-bg: rgba(255, 255, 255, 0.04);
+  --panel-input-focus: rgba(255, 255, 255, 0.08);
+  --panel-scrollbar: rgba(255, 255, 255, 0.15);
+  --panel-player-bg: rgba(44, 44, 44, 0.88);
+  --panel-player-border: 1px solid rgba(255, 255, 255, 0.1);
+  --panel-player-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --panel-player-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --panel-drawer-bg: rgba(30, 30, 30, 0.95);
+  --panel-overlay: rgba(0, 0, 0, 0.3);
+
   --vip-bg: linear-gradient(135deg, #e6a23c, #f0c060);
 
   --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
@@ -80,6 +95,21 @@
   --glass-blur: blur(40px) saturate(180%);
   --glass-border: 1px solid rgba(0, 0, 0, 0.08);
   --glass-highlight: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 50%, rgba(255, 255, 255, 0.4) 100%);
+
+  /* Sidebar & PlayerBar theme */
+  --panel-bg: rgba(245, 245, 247, 0.85);
+  --panel-border: 1px solid rgba(0, 0, 0, 0.08);
+  --panel-hover: rgba(0, 0, 0, 0.04);
+  --panel-hover-strong: rgba(0, 0, 0, 0.08);
+  --panel-input-bg: rgba(0, 0, 0, 0.04);
+  --panel-input-focus: rgba(0, 0, 0, 0.06);
+  --panel-scrollbar: rgba(0, 0, 0, 0.12);
+  --panel-player-bg: rgba(255, 255, 255, 0.88);
+  --panel-player-border: 1px solid rgba(0, 0, 0, 0.1);
+  --panel-player-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --panel-player-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --panel-drawer-bg: rgba(255, 255, 255, 0.95);
+  --panel-overlay: rgba(0, 0, 0, 0.2);
 
   --vip-bg: linear-gradient(135deg, #d48806, #e6a23c);
 }

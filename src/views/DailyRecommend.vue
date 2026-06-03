@@ -10,7 +10,7 @@
         <Icon name="clock" :size="14" class="picker-icon" />
         <select v-model="selectedDate" class="date-select" @change="onDateChange">
           <option value="">历史日推</option>
-          <option v-for="date in historyDates" :key="date" :value="date">{{ date }}</option>
+          <option v-for="date in historyDates" :key="date" :value="date">{{ formatDateStr(date) }}</option>
         </select>
       </div>
     </div>
@@ -136,6 +136,11 @@ function getArtistNames(song) {
   if (!song) return '未知歌手'
   const artists = song.ar || song.artists || []
   return artists.length > 0 ? artists.map(a => a.name).join(' / ') : '未知歌手'
+}
+
+function formatDateStr(dateStr) {
+  if (!dateStr || dateStr.length !== 8) return dateStr
+  return `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`
 }
 
 function isCurrentPlaying(song) {

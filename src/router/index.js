@@ -1,5 +1,14 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 
+// 菜单页面：启动时立即加载，配合 keep-alive 缓存
+import Recommend from '@/views/Recommend.vue'
+import LikedSongs from '@/views/LikedSongs.vue'
+import CloudDisk from '@/views/CloudDisk.vue'
+import RecentPlay from '@/views/RecentPlay.vue'
+import Settings from '@/views/Settings.vue'
+import LocalMusic from '@/views/LocalMusic.vue'
+import DailyRecommend from '@/views/DailyRecommend.vue'
+
 const routes = [
   {
     path: '/',
@@ -8,27 +17,27 @@ const routes = [
   {
     path: '/recommend',
     name: 'Recommend',
-    component: () => import('@/views/Recommend.vue'),
+    component: Recommend,
   },
   {
     path: '/liked',
     name: 'LikedSongs',
-    component: () => import('@/views/LikedSongs.vue'),
+    component: LikedSongs,
   },
   {
     path: '/cloud',
     name: 'CloudDisk',
-    component: () => import('@/views/CloudDisk.vue'),
+    component: CloudDisk,
   },
   {
     path: '/recent',
     name: 'RecentPlay',
-    component: () => import('@/views/RecentPlay.vue'),
+    component: RecentPlay,
   },
   {
     path: '/settings',
     name: 'Settings',
-    component: () => import('@/views/Settings.vue'),
+    component: Settings,
   },
   {
     path: '/playlist/:id',
@@ -48,12 +57,12 @@ const routes = [
   {
     path: '/daily',
     name: 'DailyRecommend',
-    component: () => import('@/views/DailyRecommend.vue'),
+    component: DailyRecommend,
   },
   {
     path: '/local',
     name: 'LocalMusic',
-    component: () => import('@/views/LocalMusic.vue'),
+    component: LocalMusic,
   },
   {
     path: '/album/:id',

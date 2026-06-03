@@ -1,36 +1,38 @@
 <template>
-  <div class="album-detail" v-if="album">
-    <div class="album-header">
-      <img :src="`${album.picUrl || ''}?param=200y200`" class="album-cover" style="animation: scaleIn 0.4s ease both" />
-      <div class="album-info">
-        <div class="album-label" style="animation: slideInLeft 0.3s ease 0.1s both">专辑</div>
-        <h1 class="album-name" style="animation: slideUp 0.35s ease 0.15s both">{{ album.name }}</h1>
-        <div class="album-meta">
-          <span>歌手: <span class="link" @click="goArtist(album.artist?.id)">{{ album.artist?.name }}</span></span>
-          <span>{{ formatCount(album.size || 0) }} 首</span>
-          <span>发行时间: {{ album.publishTime?.slice(0, 10) || '' }}</span>
-        </div>
-        <div class="album-desc" v-if="album.description">{{ album.description }}</div>
-        <div class="album-actions">
-          <button class="btn-primary" @click="playAll">
-            <Icon name="play" :size="14" /> 播放全部
-          </button>
+  <div>
+    <div v-if="album" class="album-detail">
+      <div class="album-header">
+        <img :src="`${album.picUrl || ''}?param=200y200`" class="album-cover" style="animation: scaleIn 0.4s ease both" />
+        <div class="album-info">
+          <div class="album-label" style="animation: slideInLeft 0.3s ease 0.1s both">专辑</div>
+          <h1 class="album-name" style="animation: slideUp 0.35s ease 0.15s both">{{ album.name }}</h1>
+          <div class="album-meta">
+            <span>歌手: <span class="link" @click="goArtist(album.artist?.id)">{{ album.artist?.name }}</span></span>
+            <span>{{ formatCount(album.size || 0) }} 首</span>
+            <span>发行时间: {{ album.publishTime?.slice(0, 10) || '' }}</span>
+          </div>
+          <div class="album-desc" v-if="album.description">{{ album.description }}</div>
+          <div class="album-actions">
+            <button class="btn-primary" @click="playAll">
+              <Icon name="play" :size="14" /> 播放全部
+            </button>
+          </div>
         </div>
       </div>
+      <SongList :songs="songs" :loading="loading" @open-comments="openComment" />
+      <CommentDialog :visible="showComment" :song="commentSong" @close="showComment = false" />
     </div>
-    <SongList :songs="songs" :loading="loading" @open-comments="openComment" />
-    <CommentDialog :visible="showComment" :song="commentSong" @close="showComment = false" />
-  </div>
-  <div v-else-if="loading" class="loading-center">
-    <span class="spinner"></span>
-  </div>
-  <div v-else class="loading-center">
-    <p>专辑信息加载失败</p>
+    <div v-else-if="loading" class="loading-center">
+      <span class="spinner"></span>
+    </div>
+    <div v-else class="loading-center">
+      <p>专辑信息加载失败</p>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onActivated, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getAlbum } from '@/api/album'
 import { usePlayerStore } from '@/stores/player'
@@ -54,10 +56,12 @@ async function loadAlbumDetail() {
   songs.value = []
   try {
     const res = await getAlbum(route.params.id)
+    console.log('[AlbumDetail] API response:', res)
     // 兼容不同响应结构
     const albumData = res?.album || res?.data?.album || res
     const songsData = res?.songs || res?.data?.songs || albumData?.songs || []
-    if (albumData && albumData.name) {
+    console.log('[AlbumDetail] parsed:', { albumData, songsData })
+    if (albumData && (albumData.name || albumData.id)) {
       album.value = albumData
       songs.value = Array.isArray(songsData) ? songsData : []
     } else {
@@ -70,7 +74,15 @@ async function loadAlbumDetail() {
   }
 }
 
-onMounted(() => loadAlbumDetail())
+onMounted(() => {
+  console.log('[AlbumDetail] mounted, id:', route.params.id)
+  loadAlbumDetail()
+})
+
+onActivated(() => {
+  console.log('[AlbumDetail] activated, id:', route.params.id)
+  loadAlbumDetail()
+})
 
 watch(() => route.params.id, (id) => {
   if (id) loadAlbumDetail()

@@ -376,24 +376,22 @@ function onDrop(targetIdx) {
 <style scoped>
 .player-bar {
   height: var(--player-height);
-  background: rgba(44, 44, 44, 0.5);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border-top: var(--glass-border);
+  background: var(--panel-player-bg);
+  backdrop-filter: blur(60px) saturate(180%);
+  -webkit-backdrop-filter: blur(60px) saturate(180%);
+  border: var(--panel-player-border);
+  border-radius: var(--radius-xl);
+  position: fixed;
+  bottom: 8px;
+  left: calc(var(--sidebar-width) + 16px);
+  right: 8px;
   display: flex;
   align-items: center;
   padding: 0 20px;
   gap: 20px;
   flex-shrink: 0;
-  position: relative;
-}
-
-.player-bar::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--glass-highlight);
-  pointer-events: none;
+  z-index: 10;
+  box-shadow: var(--panel-player-shadow), var(--panel-player-highlight);
 }
 
 .player-left {
@@ -421,7 +419,7 @@ function onDrop(targetIdx) {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--panel-hover);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -504,7 +502,7 @@ function onDrop(targetIdx) {
 
 .ctrl-btn:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--panel-hover);
 }
 
 .play-btn {
@@ -536,7 +534,7 @@ function onDrop(targetIdx) {
 .bar-track {
   flex: 1;
   height: 4px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--panel-hover);
   border-radius: 2px;
   position: relative;
   cursor: pointer;
@@ -579,19 +577,19 @@ function onDrop(targetIdx) {
 .quality-btn {
   white-space: nowrap;
   padding: 4px 10px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--panel-hover);
   border-radius: var(--radius-sm);
   font-size: 11px;
   color: var(--text-secondary);
   transition: all 0.15s;
 }
-.quality-btn:hover { background: rgba(255, 255, 255, 0.12); color: var(--text-primary); }
+.quality-btn:hover { background: var(--panel-hover-strong); color: var(--text-primary); }
 
 .quality-dropdown {
   position: absolute;
   bottom: 36px;
   right: 0;
-  background: rgba(44, 44, 44, 0.85);
+  background: var(--panel-player-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: var(--glass-border);
@@ -612,7 +610,7 @@ function onDrop(targetIdx) {
   transition: all 0.15s;
   white-space: nowrap;
 }
-.quality-option:hover { background: rgba(255, 255, 255, 0.06); color: var(--text-primary); }
+.quality-option:hover { background: var(--panel-hover); color: var(--text-primary); }
 .quality-option.active { color: var(--accent); background: var(--accent-light); }
 
 .volume-control { display: flex; align-items: center; gap: 6px; }
@@ -622,7 +620,7 @@ function onDrop(targetIdx) {
 .vol-track {
   width: 100%;
   height: 6px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--panel-hover);
   border-radius: 3px;
   position: relative;
   cursor: pointer;
@@ -660,7 +658,7 @@ function onDrop(targetIdx) {
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--panel-overlay);
   display: flex;
   justify-content: flex-end;
 }
@@ -668,13 +666,13 @@ function onDrop(targetIdx) {
 .playlist-drawer {
   width: 360px;
   height: 100%;
-  background: rgba(30, 30, 30, 0.95);
+  background: var(--panel-drawer-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-left: var(--glass-border);
   display: flex;
   flex-direction: column;
-  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+  box-shadow: -4px 0 20px var(--panel-overlay);
 }
 
 .drawer-header {
@@ -700,19 +698,19 @@ function onDrop(targetIdx) {
   border-radius: var(--radius-sm);
   transition: all 0.15s;
 }
-.drawer-btn:hover { background: rgba(255, 255, 255, 0.06); color: var(--text-primary); }
+.drawer-btn:hover { background: var(--panel-hover); color: var(--text-primary); }
 
 .drawer-list {
   flex: 1;
   overflow-y: auto;
   padding: 8px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,0.15) transparent;
+  scrollbar-color: var(--panel-scrollbar) transparent;
 }
 
 .drawer-list::-webkit-scrollbar { width: 6px; }
 .drawer-list::-webkit-scrollbar-track { background: transparent; }
-.drawer-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+.drawer-list::-webkit-scrollbar-thumb { background: var(--panel-scrollbar); border-radius: 3px; }
 
 .drawer-item {
   display: flex;
@@ -725,7 +723,7 @@ function onDrop(targetIdx) {
   font-size: 13px;
 }
 
-.drawer-item:hover { background: rgba(255, 255, 255, 0.04); }
+.drawer-item:hover { background: var(--panel-input-bg); }
 .drawer-item.active { color: var(--accent); }
 .drawer-item.drag-over { border-top: 2px solid var(--accent); }
 

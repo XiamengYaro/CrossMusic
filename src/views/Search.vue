@@ -193,13 +193,12 @@ watch(() => route.query.keywords, (val) => {
 .search-result-title { font-size: 20px; font-weight: 600; color: var(--text-primary); }
 
 .search-tabs {
-  display: flex;
+  display: inline-flex;
   gap: 4px;
   margin-bottom: 20px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-input);
   border-radius: var(--radius-md);
   padding: 3px;
-  max-width: 360px;
 }
 
 .tab-btn {
