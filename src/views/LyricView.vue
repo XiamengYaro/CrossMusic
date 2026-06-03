@@ -396,15 +396,61 @@ function parseLrc(str) {
 
 function parseYrc(str) {
   if (!str) return []
-  const lines = str.split('\n'), result = [], lr = /^\[(\d+),(\d+)\]/, wr = /\((\d+),(\d+),\d+\)([^()\[]+)/g
+  const lines = str.split('\n'), result = []
   for (const line of lines) {
-    const lm = line.match(lr)
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    // JSON format: {"t":463,"c":[{"tx":"text"},...]}
+    if (trimmed.startsWith('{"t":')) {
+      try {
+        const obj = JSON.parse(trimmed)
+        const st = obj.t
+        const contentArr = obj.c
+        if (!contentArr || !contentArr.length || st == null) continue
+        let main = ''
+        const rawWords = []
+        for (const item of contentArr) {
+          const tx = item.tx || ''
+          if (tx) {
+            main += tx
+            rawWords.push(tx)
+          }
+        }
+        if (!main) continue
+        // 查找下一行的时间戳来计算当前行时长
+        const lineIdx = lines.indexOf(line)
+        let nextSt = st + 4000
+        for (let j = lineIdx + 1; j < lines.length; j++) {
+          const nextTrimmed = lines[j].trim()
+          if (nextTrimmed.startsWith('{"t":')) {
+            try { nextSt = JSON.parse(nextTrimmed).t } catch {}
+            break
+          }
+        }
+        const dur = Math.max(nextSt - st, 1000)
+        // 按字符数比例分配时间给每个词
+        const totalChars = main.length
+        const words = []
+        let charOffset = 0
+        for (const tx of rawWords) {
+          const charLen = tx.length
+          const wordSt = st + Math.round((charOffset / totalChars) * dur)
+          const wordDur = Math.round((charLen / totalChars) * dur)
+          words.push({ startTime: wordSt, duration: wordDur, text: tx })
+          charOffset += charLen
+        }
+        result.push({ startTime: st, endTime: st + dur, mainLyric: main, translatedLyric: '', words })
+      } catch {}
+      continue
+    }
+    // Text format: [timestamp,duration](start,dur,0)word...
+    const lr = /^\[(\d+),(\d+)\]/, wr = /\((\d+),(\d+),\d+\)([^()\[]+)/g
+    const lm = trimmed.match(lr)
     if (!lm) continue
     const st = parseInt(lm[1]), dur = parseInt(lm[2])
-    if (line.match(/^\{"t":\d+,"c":/)) continue
     const words = []; let main = '', wm
-    while ((wm = wr.exec(line)) !== null) { main += wm[3]; words.push({ startTime: parseInt(wm[1]), duration: parseInt(wm[2]), text: wm[3] }) }
-    const plain = line.replace(/^\[[\d,.\]]+\]/, '').replace(/\(\d+,\d+,\d+\)[^()[]*/g, '').trim()
+    while ((wm = wr.exec(trimmed)) !== null) { main += wm[3]; words.push({ startTime: parseInt(wm[1]), duration: parseInt(wm[2]), text: wm[3] }) }
+    const plain = trimmed.replace(/^\[[\d,.\]]+\]/, '').replace(/\(\d+,\d+,\d+\)[^()[]*/g, '').trim()
     if (!main && plain) main = plain
     if (main) result.push({ startTime: st, endTime: st + dur, mainLyric: main, translatedLyric: '', words })
   }

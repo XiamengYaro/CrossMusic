@@ -53,7 +53,7 @@
       </div>
       <div class="progress-bar">
         <span class="time">{{ formatTime(playerStore.currentTime) }}</span>
-        <div class="bar-track" @click="seekTo">
+        <div class="bar-track" @mousedown="seekTo">
           <div class="bar-fill" :style="{ width: playerStore.progress + '%' }"></div>
           <div class="bar-thumb" :style="{ left: playerStore.progress + '%' }"></div>
         </div>
@@ -286,8 +286,21 @@ function toggleMode() {
 
 function seekTo(e) {
   const rect = e.currentTarget.getBoundingClientRect()
-  const percent = ((e.clientX - rect.left) / rect.width) * 100
-  playerStore.seekTo(Math.max(0, Math.min(100, percent)))
+  const setVal = (clientX) => {
+    const percent = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))
+    playerStore.seekTo(percent)
+  }
+  setVal(e.clientX)
+  const onMove = (ev) => {
+    ev.preventDefault()
+    setVal(ev.clientX)
+  }
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+  }
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
 }
 
 function toggleMute() {
