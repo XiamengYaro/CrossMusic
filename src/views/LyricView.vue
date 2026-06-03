@@ -6,11 +6,16 @@
       <span>返回</span>
     </button>
 
-    <!-- Settings Button - completely independent -->
-    <div class="settings-wrapper">
-      <button class="settings-btn" @click.stop="toggleSettings">
-        <Icon name="settings" :size="16" />
-      </button>
+    <!-- Top Right: Volume + Settings -->
+    <div class="top-right-controls" @click.stop>
+      <Icon :name="volumeIcon" :size="16" class="volume-icon" />
+      <input type="range" class="volume-inline" :min="0" :max="1" :step="0.01"
+        :value="playerStore.volume"
+        @input="playerStore.setVolume(Number($event.target.value))" />
+      <div class="settings-wrapper">
+        <button class="settings-btn" @click.stop="toggleSettings">
+          <Icon name="settings" :size="16" />
+        </button>
       <!-- Settings Panel - absolutely positioned below button -->
       <div class="settings-panel" v-show="showSettings">
         <div class="panel-header">
@@ -130,6 +135,7 @@
         </div>
       </div>
     </div>
+    </div>
 
     <!-- Background -->
     <div class="lyric-bg">
@@ -158,6 +164,7 @@
               <span v-if="idx < currentSong.ar.length - 1"> / </span>
             </template>
           </p>
+          <p v-if="songDetailText" class="lyric-song-detail text-ellipsis">{{ songDetailText }}</p>
         </div>
         <div class="lyric-progress">
           <div class="progress-bar" @click="seekLyric">
@@ -172,11 +179,17 @@
           </div>
         </div>
         <div class="lyric-controls">
+          <button class="ctrl-btn" :class="{ liked: isLiked }" @click="toggleLike" :title="isLiked ? '取消喜欢' : '喜欢'">
+            <Icon :name="isLiked ? 'heartFilled' : 'heart'" :size="18" />
+          </button>
           <button class="ctrl-btn" @click="playerStore.playPrev()"><Icon name="skipBack" :size="22" /></button>
           <button class="ctrl-btn play-btn" @click="playerStore.togglePlay()">
             <Icon :name="isPlaying ? 'pause' : 'play'" :size="26" />
           </button>
           <button class="ctrl-btn" @click="playerStore.playNext()"><Icon name="skipForward" :size="22" /></button>
+          <button class="ctrl-btn" title="播放模式" @click="toggleMode">
+            <Icon :name="modeIconName" :size="18" />
+          </button>
         </div>
       </div>
 
@@ -217,8 +230,10 @@ import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/player'
 import { useSettingStore } from '@/stores/setting'
-import { getLyricNew } from '@/api/song'
+import { useUserStore } from '@/stores/user'
+import { getLyricNew, getLikelist, likeSong } from '@/api/song'
 import { formatTime } from '@/utils/format'
+import { getItem, setItem } from '@/utils/storage'
 import Icon from '@/components/icons/Icon.vue'
 
 const props = defineProps({ visible: { type: Boolean, default: false } })
@@ -227,6 +242,7 @@ const emit = defineEmits(['close'])
 const router = useRouter()
 const playerStore = usePlayerStore()
 const settingStore = useSettingStore()
+const userStore = useUserStore()
 const lyricContainer = ref(null)
 
 const showSettings = ref(false)
@@ -234,6 +250,43 @@ const lyricLines = ref([])
 const activeLineIndex = ref(-1)
 let rafId = null
 let cachedLineEls = []
+
+const likedSet = ref(new Set(getItem('likedIds') || []))
+const isLiked = computed(() => currentSong.value ? likedSet.value.has(currentSong.value.id) : false)
+
+const volumeIcon = computed(() => {
+  const v = playerStore.volume
+  if (v === 0) return 'volumeX'
+  if (v < 0.5) return 'volume1'
+  return 'volume2'
+})
+
+const modeIconName = computed(() => {
+  const m = playerStore.playMode
+  if (m === 'repeat') return 'repeat'
+  if (m === 'random') return 'shuffle'
+  return 'list'
+})
+
+const modeTitle = computed(() => {
+  const m = playerStore.playMode
+  if (m === 'repeat') return '单曲循环'
+  if (m === 'random') return '随机播放'
+  return '顺序播放'
+})
+
+const songDetailText = computed(() => {
+  const d = playerStore.songDetail
+  if (!d) return ''
+  const parts = []
+  if (d.level) {
+    const levelMap = { jymaster: '超清母带', hires: 'Hi-Res', lossless: '无损', exhigh: '极高', higher: '较高', standard: '标准', local: '本地' }
+    parts.push(levelMap[d.level] || d.level)
+  }
+  if (d.bitrate) parts.push(Math.round(d.bitrate / 1000) + 'kbps')
+  if (d.format) parts.push(d.format.toUpperCase())
+  return parts.join(' · ')
+})
 
 // 提取歌词匹配逻辑为独立函数
 function findActiveLine(time, lines) {
@@ -281,6 +334,24 @@ function goArtist(id) {
   if (!id) return
   emit('close')
   router.push(`/artist/${id}`)
+}
+
+function toggleMode() {
+  const modes = ['sequence', 'random', 'repeat']
+  const idx = modes.indexOf(playerStore.playMode)
+  playerStore.setPlayMode(modes[(idx + 1) % modes.length])
+}
+
+async function toggleLike() {
+  const song = currentSong.value
+  if (!song || !userStore.userId) return
+  const willLike = !isLiked.value
+  try {
+    await likeSong(song.id, willLike)
+    if (willLike) likedSet.value.add(song.id)
+    else likedSet.value.delete(song.id)
+    setItem('likedIds', Array.from(likedSet.value))
+  } catch {}
 }
 const artistNames = computed(() => {
   if (!currentSong.value) return '未知歌手'
@@ -410,18 +481,8 @@ onUnmounted(() => { stopHighlightLoop() })
 
 /* Settings Button + Panel container */
 .settings-wrapper {
-  position: fixed; top: 12px; right: 20px; z-index: 1020;
+  position: relative;
 }
-
-.settings-btn {
-  width: 34px; height: 34px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  color: rgba(255,255,255,0.6);
-  background: rgba(255,255,255,0.08);
-  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-  transition: all 0.2s; cursor: pointer;
-}
-.settings-btn:hover { background: rgba(255,255,255,0.15); color: white; }
 
 /* Settings Panel - dropdown below the button */
 .settings-panel {
@@ -531,13 +592,22 @@ onUnmounted(() => { stopHighlightLoop() })
   display: flex; gap: 60px; padding: 60px 80px; align-items: center;
 }
 
-.lyric-info { flex: 0 0 320px; display: flex; flex-direction: column; align-items: center; gap: 24px; }
-.lyric-album-art { width: 280px; height: 280px; border-radius: 16px; object-fit: cover; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+.lyric-info { flex: 0 0 40%; min-width: 280px; display: flex; flex-direction: column; align-items: center; gap: 28px; padding-top: 20px; }
+.lyric-album-art { width: min(280px, 100%); aspect-ratio: 1; border-radius: 16px; object-fit: cover; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
 .lyric-song-meta { text-align: center; width: 100%; }
-.lyric-song-name { font-size: 22px; font-weight: 700; color: white; max-width: 300px; margin: 0 auto; }
-.lyric-artist { font-size: 14px; color: rgba(255,255,255,0.6); margin-top: 6px; max-width: 300px; margin-left: auto; margin-right: auto; }
+.lyric-song-name { font-size: 20px; font-weight: 700; color: white; max-width: 100%; margin: 0 auto; }
+.lyric-artist { font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 4px; max-width: 100%; margin-left: auto; margin-right: auto; }
+.lyric-song-detail { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 4px; max-width: 100%; margin-left: auto; margin-right: auto; }
 .clickable-link { cursor: pointer; transition: color 0.2s; }
 .clickable-link:hover { color: rgba(255,255,255,0.9); text-decoration: underline; }
+
+.lyric-controls { display: flex; align-items: center; gap: 28px; }
+.ctrl-btn { color: rgba(255,255,255,0.6); transition: all 0.15s; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.ctrl-btn:hover { color: white; transform: scale(1.1); }
+.ctrl-btn.liked { color: var(--accent, #ec4141); }
+.ctrl-btn.liked:hover { color: var(--accent, #ec4141); transform: scale(1.15); }
+.play-btn { width: 48px; height: 48px; background: rgba(255,255,255,0.12); border-radius: 50%; backdrop-filter: blur(20px); }
+.play-btn:hover { background: rgba(255,255,255,0.2); }
 
 .lyric-progress { width: 100%; max-width: 300px; }
 .progress-bar { cursor: pointer; padding: 8px 0; }
@@ -547,11 +617,33 @@ onUnmounted(() => { stopHighlightLoop() })
 .progress-bar:hover .progress-dot { opacity: 1; }
 .progress-time { display: flex; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 4px; }
 
-.lyric-controls { display: flex; align-items: center; gap: 32px; }
-.ctrl-btn { color: rgba(255,255,255,0.7); transition: all 0.15s; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.ctrl-btn:hover { color: white; transform: scale(1.1); }
-.play-btn { width: 52px; height: 52px; background: rgba(255,255,255,0.12); border-radius: 50%; backdrop-filter: blur(20px); }
-.play-btn:hover { background: rgba(255,255,255,0.2); }
+.top-right-controls { position: absolute; top: 20px; right: 20px; z-index: 10; display: flex; align-items: center; gap: 10px; }
+.settings-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.6); cursor: pointer; transition: all 0.15s;
+  background: rgba(255,255,255,0.06); flex-shrink: 0;
+}
+.settings-btn:hover { background: rgba(255,255,255,0.12); color: white; }
+
+.volume-icon { color: rgba(255,255,255,0.5); flex-shrink: 0; }
+.volume-inline {
+  width: 80px; height: 4px; -webkit-appearance: none; appearance: none;
+  background: rgba(255,255,255,0.15); border-radius: 2px; outline: none; cursor: pointer;
+}
+.volume-inline::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  background: white; border-radius: 50%; cursor: pointer;
+  box-shadow: 0 0 6px rgba(0,0,0,0.3);
+}
+.volume-inline::-moz-range-thumb {
+  width: 14px; height: 14px; border: none;
+  background: white; border-radius: 50%; cursor: pointer;
+  box-shadow: 0 0 6px rgba(0,0,0,0.3);
+}
+.volume-inline::-moz-range-track {
+  background: rgba(255,255,255,0.15); border-radius: 2px; height: 4px;
+}
 
 .lyric-scroll-area {
   flex: 1; height: 100%; overflow-y: auto; scroll-behavior: smooth;
