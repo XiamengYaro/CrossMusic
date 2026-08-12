@@ -136,7 +136,7 @@ import { useSettingStore } from '@/stores/setting'
 import { getUserPlaylist } from '@/api/playlist'
 import Icon from '@/components/icons/Icon.vue'
 
-const emit = defineEmits(['show-login', 'navigate'])
+const emit = defineEmits(['show-login'])
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
@@ -174,7 +174,7 @@ watch(() => route.path, (p) => {
   if (moreItems.some(i => p.startsWith(i.route))) moreOpen.value = true
 })
 
-function navigate(path) { router.push(path); emit('navigate', path) }
+function navigate(path) { router.push(path) }
 function handleUserClick() {
   if (!userStore.isLoggedIn) {
     emit('show-login')
@@ -300,11 +300,11 @@ watch(() => userStore.isLoggedIn, () => loadPlaylists())
 
 .menu-group-title {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 7px 12px; font-size: 12px; font-weight: 500; color: var(--text-secondary);
-  cursor: pointer; border-radius: var(--radius-md);
-  transition: all 0.15s ease;
+  padding: 6px 12px; font-size: 11px; font-weight: 600; color: var(--text-tertiary);
+  text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; border-radius: var(--radius-sm);
+  transition: color 0.15s;
 }
-.menu-group-title:hover { color: var(--text-primary); background: var(--panel-hover); }
+.menu-group-title:hover { color: var(--text-secondary); }
 .chevron { transition: transform 0.2s; transform: rotate(-90deg); }
 .chevron.open { transform: rotate(90deg); }
 .menu-group-items { overflow: hidden; }

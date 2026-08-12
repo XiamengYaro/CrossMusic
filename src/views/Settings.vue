@@ -56,40 +56,6 @@
       </div>
     </div>
 
-    <!-- Mobile Server Connection -->
-    <div v-if="isMobile" class="setting-section">
-      <h2 class="section-title"><Icon name="wifi" :size="16" /> 移动端服务器连接</h2>
-      <div class="mobile-server-info">
-        <p class="info-text">在手机上使用时，需要连接到运行 API 服务的电脑。</p>
-        <div class="info-steps">
-          <div class="info-step">
-            <span class="step-num">1</span>
-            <span>确保手机和电脑在同一局域网</span>
-          </div>
-          <div class="info-step">
-            <span class="step-num">2</span>
-            <span>在电脑上启动 CrossMusic 并保持运行</span>
-          </div>
-          <div class="info-step">
-            <span class="step-num">3</span>
-            <span>在下方输入电脑的 IP 地址和端口</span>
-          </div>
-        </div>
-        <div class="mobile-server-input">
-          <input
-            v-model="mobileServerUrl"
-            type="text"
-            class="input-field"
-            placeholder="例如：http://192.168.1.100:3000"
-            @keydown.enter="saveMobileServerUrl"
-          />
-          <button class="save-btn" @click="saveMobileServerUrl">保存</button>
-        </div>
-        <p v-if="mobileServerStatus" class="api-status" :class="mobileServerStatusClass">{{ mobileServerStatus }}</p>
-        <p v-if="currentServerUrl" class="current-server">当前服务器：{{ currentServerUrl }}</p>
-      </div>
-    </div>
-
     <!-- Account Settings -->
     <div id="account" class="setting-section">
       <h2 class="section-title"><Icon name="user" :size="16" /> 账号</h2>
@@ -249,7 +215,6 @@ import { usePlayerStore } from '@/stores/player'
 import { testConnection, setBaseURL } from '@/api/request'
 import { checkApiStatus, startApiServer, stopApiServer, selectDirectory, readLog, clearLogs, clearAllData, resetApp } from '@/utils/tauri-api'
 import Icon from '@/components/icons/Icon.vue'
-import { isMobile } from '@/utils/platform'
 import pkg from '../../package.json'
 
 const appVersion = `v${pkg.version}`
@@ -262,10 +227,6 @@ const route = useRoute()
 const apiUrl = ref(settingStore.apiBaseUrl)
 const apiStatus = ref('')
 const apiStatusClass = ref('')
-const mobileServerUrl = ref(localStorage.getItem('serverUrl') || '')
-const mobileServerStatus = ref('')
-const mobileServerStatusClass = ref('')
-const currentServerUrl = ref(localStorage.getItem('serverUrl') || '')
 const apiRunning = ref(false)
 const apiLoading = ref(false)
 const apiPortInput = ref(settingStore.apiPort || '3000')
@@ -292,25 +253,7 @@ const modeOptions = [
   { label: '单曲循环', value: 'repeat' },
 ]
 
-async function saveMobileServerUrl() {
-  const url = mobileServerUrl.value.trim()
-  if (!url) { mobileServerStatus.value = '请输入服务器地址'; mobileServerStatusClass.value = 'status-error'; return }
-  try {
-    await testConnection(url)
-    localStorage.setItem('serverUrl', url)
-    currentServerUrl.value = url
-    mobileServerStatus.value = '连接成功！'
-    mobileServerStatusClass.value = 'status-success'
-    // Update the API base URL
-    settingStore.setApiBaseUrl(url)
-    settingStore.setApiMode('external')
-  } catch (e) {
-    mobileServerStatus.value = '连接失败：' + e.message
-    mobileServerStatusClass.value = 'status-error'
-  }
-}
-
-function switchApiMode(mode) {
+async function switchApiMode(mode) {
   settingStore.setApiMode(mode)
   if (mode === 'builtin') {
     const port = settingStore.apiPort || '3000'
@@ -548,13 +491,4 @@ function resetShortcut(action) {
 .shortcut-input { width: 180px; text-align: center; font-family: monospace; font-size: 12px; cursor: pointer; }
 .shortcut-reset-btn { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.06); color: var(--text-secondary); font-size: 14px; transition: all 0.15s; }
 .shortcut-reset-btn:hover { background: rgba(255,255,255,0.12); color: var(--text-primary); }
-
-.mobile-server-info { padding: 12px 14px; background: rgba(128,128,128,0.06); border: 1px solid var(--border-light); border-radius: 8px; }
-.info-text { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; }
-.info-steps { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-.info-step { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-secondary); }
-.step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: white; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
-.mobile-server-input { display: flex; gap: 8px; margin-bottom: 8px; }
-.mobile-server-input .input-field { flex: 1; }
-.current-server { font-size: 12px; color: var(--text-tertiary); margin-top: 8px; }
 </style>

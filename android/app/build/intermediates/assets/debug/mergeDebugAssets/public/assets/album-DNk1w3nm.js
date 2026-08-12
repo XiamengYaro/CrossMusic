@@ -1,0 +1,1 @@
+import{y as e}from"./index-4g1SOuQk.js";function t(t){return e.get(`/album`,{params:{id:t}})}function n(t){return e.get(`/album/detail/dynamic`,{params:{id:t}})}function r(t=25,n=0){return e.get(`/album/sublist`,{params:{limit:t,offset:n}})}export{n,r,t};
