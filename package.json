@@ -33,12 +33,14 @@
   "build": {
     "appId": "com.crossmusic.app",
     "productName": "CrossMusic",
-    "publish": [{
-      "provider": "github",
-      "owner": "XiamengYaro",
-      "repo": "CrossMusic",
-      "releaseType": "release"
-    }],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "XiamengYaro",
+        "repo": "CrossMusic",
+        "releaseType": "release"
+      }
+    ],
     "mac": {
       "category": "public.app-category.music",
       "icon": "build/icon.icns",
@@ -96,8 +98,8 @@
     "compression": "maximum"
   },
   "dependencies": {
-    "@neteasecloudmusicapienhanced/unblockmusic-utils": "^0.3.2",
-    "axios": "^1.16.1",
+    "@neteasecloudmusicapienhanced/unblockmusic-utils": "^0.4.0",
+    "axios": "^1.19.0",
     "crypto-js": "^4.2.0",
     "dotenv": "^17.4.2",
     "electron-updater": "^6.8.3",
@@ -105,7 +107,7 @@
     "express-fileupload": "^1.5.2",
     "gzip": "^0.1.0",
     "marked": "^18.0.4",
-    "music-metadata": "^11.12.3",
+    "music-metadata": "^11.14.0",
     "node-forge": "^1.4.0",
     "pac-proxy-agent": "^7.2.0",
     "pinia": "^3.0.4",
@@ -115,7 +117,8 @@
     "vue": "^3.5.34",
     "vue-router": "^4.6.4",
     "xml2js": "^0.6.2",
-    "yargs": "^18.0.0"
+    "yargs": "^18.1.0",
+    "jsdom": "^24.1.3"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.6",

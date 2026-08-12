@@ -17,8 +17,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { getLikeList } from '@/api/playlist'
-import { getSongDetail } from '@/api/song'
+import { getUserPlaylist, getPlaylistTrackAll } from '@/api/playlist'
 import SongList from '@/components/SongList.vue'
 import CommentDialog from '@/components/CommentDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -37,28 +36,40 @@ async function loadLikedSongs() {
   if (!userStore.userId) return
   loading.value = true
   try {
-    const likeRes = await getLikeList(userStore.userId)
-    const ids = likeRes.ids || likeRes.body?.ids || likeRes.data?.ids || []
-    if (ids.length > 0) {
-      // API 返回的 ids 按收藏时间排序，最早的在前，反转使最新的在前
-      const reversedIds = [...ids].reverse()
-      // 分批获取歌曲详情，每批最多 500 个，按顺序拼接
-      const batchSize = 500
-      const orderedSongs = []
-      for (let i = 0; i < reversedIds.length; i += batchSize) {
-        const batch = reversedIds.slice(i, i + batchSize)
-        const detailRes = await getSongDetail(batch.join(','))
-        if (detailRes.songs) {
-          // 按 reversedIds 中的顺序重新排列这批歌曲
-          const songMap = new Map(detailRes.songs.map(s => [s.id, s]))
-          for (const id of batch) {
-            const song = songMap.get(id)
-            if (song) orderedSongs.push(song)
-          }
-        }
-      }
-      songs.value = orderedSongs
+    // 获取用户歌单列表，找到「我喜欢的音乐」歌单
+    const plRes = await getUserPlaylist(userStore.userId, 1, 0)
+    const allPlaylists = plRes.playlist || plRes.playlists || []
+    // 「我喜欢的音乐」是用户创建的第一个歌单，且 specialType === 5
+    const likedPlaylist = allPlaylists.find(
+      pl => pl.specialType === 5 || pl.name === '我喜欢的音乐'
+    )
+    if (!likedPlaylist) {
+      console.warn('未找到「我喜欢的音乐」歌单')
+      songs.value = []
+      return
     }
+    // 使用 /playlist/track/all 获取歌曲（保持与客户端一致的排序）
+    const batchSize = 500
+    const total = likedPlaylist.trackCount || 0
+    const allSongs = []
+    let offset = 0
+    let iterations = 0
+    while (offset < total && iterations < 100) {
+      iterations++
+      try {
+        const trackRes = await getPlaylistTrackAll(likedPlaylist.id, batchSize, offset)
+        const tracks = trackRes.songs || []
+        if (tracks.length === 0) break
+        allSongs.push(...tracks)
+        const prevOffset = offset
+        offset += tracks.length
+        if (offset === prevOffset) break
+      } catch (e) {
+        console.error('加载歌曲失败:', e)
+        break
+      }
+    }
+    songs.value = allSongs
   } catch (e) {
     console.error('获取喜欢的音乐失败:', e)
   } finally {

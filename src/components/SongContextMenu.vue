@@ -42,6 +42,9 @@
         <div class="menu-item" @click="downloadSong">
           <Icon name="download" :size="14" /> 下载
         </div>
+        <div class="menu-item" @click="shareSong">
+          <Icon name="plus" :size="14" /> 复制分享链接
+        </div>
       </div>
     </div>
   </Teleport>
@@ -112,7 +115,7 @@ async function toggleLike() {
   if (!props.song || !userStore.userId) return
   const willLike = !isLiked.value
   try {
-    await likeSong(props.song.id, userStore.userId, willLike)
+    await likeSong(props.song.id, willLike)
     if (willLike) {
       likedSet.value.add(props.song.id)
       showToast(`已添加入「喜欢的音乐」`, 'like')
@@ -164,6 +167,25 @@ async function downloadSong() {
     await playerStore.downloadSong(props.song)
   } catch (e) {
     console.error('下载失败:', e)
+  }
+  close()
+}
+
+async function shareSong() {
+  if (!props.song) return
+  const url = 'https://music.163.com/song?id=' + props.song.id
+  try {
+    await navigator.clipboard.writeText(url)
+    showToast('已复制歌曲链接', 'like')
+  } catch {
+    // fallback
+    const textarea = document.createElement('textarea')
+    textarea.value = url
+    document.body.appendChild(textarea)
+    textarea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textarea)
+    showToast('已复制歌曲链接', 'like')
   }
   close()
 }

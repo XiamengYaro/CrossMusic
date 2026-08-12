@@ -39,6 +39,8 @@ const props = defineProps({
   song: Object,
 })
 
+const emit = defineEmits(['close'])
+
 const comments = ref([])
 const loading = ref(false)
 const listRef = ref(null)

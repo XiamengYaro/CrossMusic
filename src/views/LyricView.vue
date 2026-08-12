@@ -61,6 +61,13 @@
                 @input="settingStore.setLyricSetting('lyricTransFontSize', Number($event.target.value))" />
               <span class="range-val">{{ settingStore.lyricTransFontSize }}</span>
             </div>
+            <div class="panel-row">
+              <label class="setting-label">偏移</label>
+              <input type="range" class="range-input" :min="-3" :max="3" :step="0.1"
+                :value="lyricOffset"
+                @input="lyricOffset = Number($event.target.value)" />
+              <span class="range-val">{{ lyricOffset.toFixed(1) }}s</span>
+            </div>
           </div>
 
           <div class="panel-section">
@@ -246,6 +253,7 @@ const userStore = useUserStore()
 const lyricContainer = ref(null)
 
 const showSettings = ref(false)
+const lyricOffset = ref(0)
 const lyricLines = ref([])
 const activeLineIndex = ref(-1)
 let rafId = null
@@ -308,7 +316,7 @@ function startHighlightLoop() {
     if (!props.visible) { rafId = null; return }
     const ls = lyricLines.value
     if (ls.length) {
-      const time = playerStore.currentTime
+      const time = playerStore.currentTime - lyricOffset.value * 1000
       const n = findActiveLine(time, ls)
       if (n !== activeLineIndex.value) {
         activeLineIndex.value = n
@@ -488,7 +496,7 @@ watch(() => props.visible, (v) => {
     // 立即同步一次当前高亮
     const ls = lyricLines.value
     if (ls.length) {
-      const n = findActiveLine(playerStore.currentTime, ls)
+      const n = findActiveLine(playerStore.currentTime - lyricOffset.value * 1000, ls)
       if (n !== activeLineIndex.value) { activeLineIndex.value = n; nextTick(scrollToActive) }
     }
   } else {

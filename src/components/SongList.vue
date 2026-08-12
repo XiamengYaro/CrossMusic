@@ -2,13 +2,21 @@
   <div class="song-list">
     <div class="song-list-header">
       <div class="col-index">#</div>
-      <div class="col-title">标题</div>
-      <div class="col-artist">歌手</div>
-      <div class="col-album">专辑</div>
-      <div class="col-duration">时长</div>
+      <div class="col-title" @click="toggleSort('name')" :class="{ sortable: true, sorted: sortKey === 'name' }">
+        标题 <span class="sort-arrow" v-if="sortKey === 'name'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
+      </div>
+      <div class="col-artist" @click="toggleSort('artist')" :class="{ sortable: true, sorted: sortKey === 'artist' }">
+        歌手 <span class="sort-arrow" v-if="sortKey === 'artist'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
+      </div>
+      <div class="col-album" @click="toggleSort('album')" :class="{ sortable: true, sorted: sortKey === 'album' }">
+        专辑 <span class="sort-arrow" v-if="sortKey === 'album'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
+      </div>
+      <div class="col-duration" @click="toggleSort('duration')" :class="{ sortable: true, sorted: sortKey === 'duration' }">
+        时长 <span class="sort-arrow" v-if="sortKey === 'duration'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
+      </div>
     </div>
     <div
-      v-for="(song, index) in songs"
+      v-for="(song, index) in sortedSongs"
       :key="song.id"
       class="song-item"
       :class="{ active: isActive(song.id), playing: isPlaying(song.id) }"
@@ -63,7 +71,7 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/player'
 import { formatTime } from '@/utils/format'
@@ -77,6 +85,33 @@ const props = defineProps({
 })
 
 defineEmits(['open-comments'])
+
+const sortKey = ref('')
+const sortOrder = ref('asc')
+
+const sortedSongs = computed(() => {
+  if (!sortKey.value) return props.songs
+  const key = sortKey.value
+  const order = sortOrder.value === 'asc' ? 1 : -1
+  return [...props.songs].sort((a, b) => {
+    let va, vb
+    if (key === 'name') { va = a.name || ''; vb = b.name || '' }
+    else if (key === 'artist') { va = (a.ar || []).map(x => x.name).join(','); vb = (b.ar || []).map(x => x.name).join(',') }
+    else if (key === 'album') { va = a.al?.name || ''; vb = b.al?.name || '' }
+    else if (key === 'duration') { va = a.dt || a.duration || 0; vb = b.dt || b.duration || 0 }
+    if (typeof va === 'string') return va.localeCompare(vb) * order
+    return (va - vb) * order
+  })
+})
+
+function toggleSort(key) {
+  if (sortKey.value === key) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortOrder.value = 'asc'
+  }
+}
 
 const router = useRouter()
 const playerStore = usePlayerStore()
@@ -293,4 +328,9 @@ async function downloadSong(song) {
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
+
+.col-title.sortable, .col-artist.sortable, .col-album.sortable, .col-duration.sortable { cursor: pointer; user-select: none; transition: color 0.15s; }
+.col-title.sortable:hover, .col-artist.sortable:hover, .col-album.sortable:hover, .col-duration.sortable:hover { color: var(--text-primary); }
+.sorted { color: var(--accent) !important; }
+.sort-arrow { font-size: 10px; margin-left: 2px; }
 </style>

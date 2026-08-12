@@ -30,6 +30,26 @@ export const useSettingStore = defineStore('setting', () => {
   const lyricActiveScale = ref(getItem('lyricActiveScale') !== false)
   const lyricPassedOpacity = ref(getItem('lyricPassedOpacity') || 0.3)
 
+  // 通知设置
+  const enableNotifications = ref(getItem('enableNotifications') !== false)
+  const enableMediaSession = ref(getItem('enableMediaSession') !== false)
+
+  function setEnableNotifications(v) { enableNotifications.value = v; setItem('enableNotifications', v) }
+  function setEnableMediaSession(v) { enableMediaSession.value = v; setItem('enableMediaSession', v) }
+
+  // 自定义快捷键
+  const shortcuts = ref(getItem('shortcuts') || {
+    playPause: 'CommandOrControl+Space',
+    prev: 'CommandOrControl+Left',
+    next: 'CommandOrControl+Right',
+    toggleLyric: 'CommandOrControl+L',
+  })
+
+  function setShortcut(action, key) {
+    shortcuts.value = { ...shortcuts.value, [action]: key }
+    setItem('shortcuts', shortcuts.value)
+  }
+
   function setApiBaseUrl(url) {
     const cleanUrl = url.replace(/\/+$/, '')
     apiBaseUrl.value = cleanUrl
@@ -76,8 +96,7 @@ export const useSettingStore = defineStore('setting', () => {
       lyricFontSize, lyricActiveFontSize, lyricLineHeight,
       lyricShowTranslation, lyricShowBlurBg, lyricBlurAmount,
       lyricBgOpacity, lyricFontFamily, lyricColor,
-    lyricVerticalOffset, lyricTransFontSize, lyricActiveScale, lyricPassedOpacity,
-      lyricShowFlowBg
+    lyricVerticalOffset, lyricTransFontSize, lyricActiveScale, lyricPassedOpacity
     }
     if (refMap[key]) {
       if (key === 'lyricFontSize') {
@@ -130,6 +149,9 @@ export const useSettingStore = defineStore('setting', () => {
     addSearchHistory, clearSearchHistory,
     lyricFontSize, lyricActiveFontSize, lyricLineHeight, lyricShowTranslation,
     lyricShowBlurBg, lyricBlurAmount, lyricBgOpacity, lyricFontFamily, lyricColor,
-      lyricVerticalOffset, lyricTransFontSize, lyricActiveScale, lyricPassedOpacity
+    lyricVerticalOffset, lyricTransFontSize, lyricActiveScale, lyricPassedOpacity,
+    setLyricSetting, lyricFontFamilies, lyricColors,
+    enableNotifications, enableMediaSession, setEnableNotifications, setEnableMediaSession,
+    shortcuts, setShortcut
     }
 })

@@ -134,3 +134,23 @@ export function getVipInfo(uid) {
 export function dailySignin(type = 0) {
   return request.get('/daily_signin', { params: { type } })
 }
+
+/** 听歌足迹 - 总收听数据 */
+export function getListenDataTotal() {
+  return request.get('/listen/data/total')
+}
+
+/** 听歌足迹 - 歌曲播放排行 */
+export function getListenSongRank(type = 'month') {
+  return request.get('/listen/data/song/play/rank', { params: { type } })
+}
+
+/** 最近听歌列表 */
+export function getRecentListenList() {
+  return request.get('/recent/listen/list')
+}
+
+/** 听歌足迹 - 本周/本月收听时长 */
+export function getListenRealtimeReport(type = 'week') {
+  return request.get('/listen/data/realtime/report', { params: { type } })
+}

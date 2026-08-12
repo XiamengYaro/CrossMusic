@@ -53,7 +53,7 @@ const toastRef = ref(null)
 const isMacOS = window.electronAPI?.platform === 'darwin' || navigator.userAgent.includes('Mac') || navigator.platform.includes('Mac')
 
 // 缓存菜单页面，避免重复请求
-const cachedViews = ['Recommend', 'LikedSongs', 'CloudDisk', 'RecentPlay', 'Settings', 'LocalMusic', 'DailyRecommend']
+const cachedViews = ['Recommend', 'LikedSongs', 'CloudDisk', 'RecentPlay', 'Settings', 'LocalMusic', 'DailyRecommend', 'PrivateFM', 'AlbumCollection', 'Podcast', 'Statistics']
 const isCachedRoute = computed(() => cachedViews.includes(router.currentRoute.value.name))
 
 // 全局快捷键监听
@@ -61,6 +61,7 @@ function handleShortcut(action) {
   if (action === 'play-pause') playerStore.togglePlay()
   else if (action === 'prev') playerStore.playPrev()
   else if (action === 'next') playerStore.playNext()
+  else if (action === 'toggle-lyric') showLyric.value = !showLyric.value
 }
 
 let shortcutHandler = null
@@ -69,12 +70,9 @@ onMounted(async () => {
   if (toastRef.value) registerToast(toastRef.value.show)
 
   // 注册 Electron 全局快捷键监听
-  if (window.electronAPI) {
-    const { ipcRenderer } = window
-    if (ipcRenderer?.on) {
-      shortcutHandler = (_e, action) => handleShortcut(action)
-      ipcRenderer.on('shortcut', shortcutHandler)
-    }
+  if (window.electronAPI?.onShortcut) {
+    shortcutHandler = (action) => handleShortcut(action)
+    window.electronAPI.onShortcut(shortcutHandler)
   }
 
   // 首次启动
@@ -105,11 +103,8 @@ onMounted(async () => {
 function handleNavigate(route) { router.push(route) }
 
 onUnmounted(() => {
-  if (shortcutHandler && window.electronAPI) {
-    const { ipcRenderer } = window
-    if (ipcRenderer?.removeListener) {
-      ipcRenderer.removeListener('shortcut', shortcutHandler)
-    }
+  if (shortcutHandler && window.electronAPI?.offShortcut) {
+    window.electronAPI.offShortcut(shortcutHandler)
   }
 })
 </script>

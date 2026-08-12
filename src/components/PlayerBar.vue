@@ -94,6 +94,25 @@
         </div>
       </div>
 
+      <!-- Sleep Timer -->
+      <div class="sleep-timer" v-if="playerStore.sleepTimerRemaining > 0">
+        <button class="ctrl-btn sleep-btn active" @click="playerStore.clearSleepTimer()" :title="'定时关闭: ' + formatSleepTime(playerStore.sleepTimerRemaining)">
+          <Icon name="clock" :size="16" />
+          <span class="sleep-time">{{ formatSleepTime(playerStore.sleepTimerRemaining) }}</span>
+        </button>
+      </div>
+      <div class="sleep-timer" v-else>
+        <button class="ctrl-btn sleep-btn" @click="showSleepMenu = !showSleepMenu" title="定时关闭">
+          <Icon name="clock" :size="16" />
+        </button>
+        <div v-if="showSleepMenu" class="sleep-dropdown">
+          <div v-for="m in [15, 30, 45, 60, 90, 120]" :key="m" class="sleep-option" @click="setSleep(m)">
+            {{ m }} 分钟
+          </div>
+          <div class="sleep-option" @click="playerStore.clearSleepTimer(); showSleepMenu = false">关闭</div>
+        </div>
+      </div>
+
       <!-- Playlist Toggle -->
       <button class="ctrl-btn playlist-btn" title="播放列表" @click="togglePlaylist">
         <Icon name="list" :size="16" />
@@ -157,6 +176,7 @@ const userStore = useUserStore()
 const settingStore = useSettingStore()
 const showQuality = ref(false)
 const showPlaylist = ref(false)
+const showSleepMenu = ref(false)
 const prevVolume = ref(0.7)
 
 const isSpinPlaying = computed(() => playerStore.isPlaying && !!playerStore.currentSong)
@@ -180,6 +200,17 @@ onUnmounted(() => {
 })
 window.addEventListener('keydown', onGlobalKeydown)
 document.addEventListener('click', onGlobalClick)
+
+function setSleep(minutes) {
+  playerStore.setSleepTimer(minutes)
+  showSleepMenu.value = false
+}
+
+function formatSleepTime(seconds) {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return m + ':' + String(s).padStart(2, '0')
+}
 
 const artistNames = computed(() => {
   const song = playerStore.currentSong
@@ -754,4 +785,12 @@ function onDrop(targetIdx) {
 .item-remove:hover { color: var(--accent); }
 .drawer-item:hover .item-remove { opacity: 1; }
 .drawer-empty { text-align: center; padding: 40px 0; color: var(--text-tertiary); }
+
+.sleep-timer { position: relative; }
+.sleep-btn { width: auto; padding: 0 8px; gap: 4px; display: flex; align-items: center; }
+.sleep-btn.active { color: var(--accent); }
+.sleep-time { font-size: 11px; font-variant-numeric: tabular-nums; }
+.sleep-dropdown { position: absolute; bottom: 36px; right: 0; background: var(--panel-player-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: var(--glass-border); border-radius: var(--radius-md); box-shadow: var(--shadow-md); overflow: hidden; z-index: 100; min-width: 100px; }
+.sleep-option { padding: 8px 16px; font-size: 12px; color: var(--text-secondary); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.sleep-option:hover { background: var(--panel-hover); color: var(--text-primary); }
 </style>

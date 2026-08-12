@@ -113,8 +113,16 @@ async function checkVersion() {
             npmVersion: version,
           })
 
+        const semverCompare = (a, b) => {
+          const pa = a.split('.').map(Number)
+          const pb = b.split('.').map(Number)
+          for (let i = 0; i < 3; i++) {
+            if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) - (pb[i] || 0)
+          }
+          return 0
+        }
         resolveStatus(
-          packageJSON.version < version
+          semverCompare(packageJSON.version, version) < 0
             ? VERSION_CHECK_RESULT.NOT_LATEST
             : VERSION_CHECK_RESULT.LATEST,
         )
@@ -299,12 +307,11 @@ async function constructServer(moduleDefs) {
       )
 
       try {
-        const moduleResponse = await moduleDef.module(query, (...params) => {
-          // 参数注入客户端IP
+                const moduleResponse = await moduleDef.module(query, (...params) => {
           const obj = [...params]
           const options = obj[2] || {}
-          let ip = ''
-          
+                    let ip = ''
+
           if (options.randomCNIP) {
             ip = global.cnIp
             // logger.info('Using random Chinese IP for request:', ip)
@@ -319,7 +326,7 @@ async function constructServer(moduleDefs) {
             }
             // logger.info('Requested from ip:', ip)
           }
-          
+
           obj[2] = {
             ...options,
             ip,
@@ -422,7 +429,7 @@ async function serveNcmApi(options) {
     options.checkVersion &&
     checkVersion().then(({ npmVersion, ourVersion, status }) => {
       if (status == VERSION_CHECK_RESULT.NOT_LATEST) {
-        logger.info(
+        logger.warn(
           `最新版本: ${npmVersion}, 当前版本: ${ourVersion}, 请及时更新`,
         )
       }

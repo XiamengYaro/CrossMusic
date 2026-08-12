@@ -55,11 +55,11 @@ request.interceptors.response.use(
     }
     return Promise.reject(new Error(data?.message || '请求失败'))
   },
-  (error) => {
+  async (error) => {
     // 401 认证失败时清除登录状态
     if (error.response?.status === 401) {
       try {
-        const { useUserStore } = require('@/stores/user')
+        const { useUserStore } = await import('@/stores/user')
         useUserStore().clearLoginData()
       } catch {}
     }

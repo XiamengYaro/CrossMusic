@@ -17,7 +17,13 @@ const {
   generateRandomChineseIP,
 } = require('./index')
 const { URLSearchParams, URL } = require('url')
-const { APP_CONF } = require('../util/config.json')
+const { APP_CONF } = require('./config.json')
+const {
+  getToken: antiCheatTokenV2,
+} = require('../module/register_checktoken_v2')
+const {
+  getToken: antiCheatTokenV3,
+} = require('../module/register_checktoken_v3')
 
 // 预先读取匿名token并缓存
 const anonymous_token = fs.readFileSync(
@@ -88,6 +94,12 @@ const osMap = {
     osver: '16.2',
     channel: 'distribution',
   },
+  osx: {
+    os: 'osx',
+    appver: '3.1.10.5100',
+    osver: '15.5',
+    channel: 'netease',
+  },
 }
 
 // 预先定义userAgentMap
@@ -100,9 +112,9 @@ const userAgentMap = {
       'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.90 Safari/537.36',
   },
   api: {
-    pc: 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/91.0.4472.164 NeteaseMusicDesktop/3.0.18.203152',
+    pc: 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/91.0.4472.164 NeteaseMusicDesktop/3.1.29.205117',
     android:
-      'NeteaseMusic/9.1.65.240927161425(9001065);Dalvik/2.1.0 (Linux; U; Android 14; 23013RK75C Build/UKQ1.230804.001)',
+      'NeteaseMusic/9.5.61.260802021928(9005061);Dalvik/2.1.0 (Linux; U; Android 12; HBN-AL00 Build/cd737a2.0)',
     iphone: 'NeteaseMusic 9.0.90/5038 (iPhone; iOS 16.2; zh_CN)',
   },
 }
@@ -110,7 +122,8 @@ const userAgentMap = {
 // 预先定义常量
 const DOMAIN = APP_CONF.domain
 const API_DOMAIN = APP_CONF.apiDomain
-const XEAPI_DOMAIN = 'https://interface3.music.163.com'
+const EAPI_DOMAIN = APP_CONF.eapiDomain
+const XEAPI_DOMAIN = APP_CONF.xeapiDomain
 const ENCRYPT_RESPONSE = APP_CONF.encryptResponse
 const SPECIAL_STATUS_CODES = new Set([201, 302, 400, 502, 800, 801, 802, 803])
 
@@ -174,7 +187,19 @@ const generateRequestId = () => {
     .padStart(4, '0')}`
 }
 
-const createRequest = (uri, data, options) => {
+const createRequest = async (uri, data, options) => {
+  let token = ''
+  switch (options.checkToken) {
+    case 'v2':
+      // 每次实时获取反作弊 token，不缓存
+      token = await antiCheatTokenV2()
+      break
+    case 'v3':
+      // 每次实时获取反作弊 token，不缓存
+      token = await antiCheatTokenV3()
+      break
+  }
+
   return new Promise((resolve, reject) => {
     // 变量声明和初始化
     const headers = options.headers ? { ...options.headers } : {}
@@ -220,6 +245,9 @@ const createRequest = (uri, data, options) => {
         headers['Referer'] = options.domain || DOMAIN
         headers['User-Agent'] = options.ua || chooseUserAgent('weapi')
         data.csrf_token = csrfToken
+        if (options.checkToken) {
+          headers['X-antiCheatToken'] = token
+        }
         encryptData = encrypt.weapi(data)
         url = (options.domain || DOMAIN) + '/weapi/' + uri.substr(5)
         break
@@ -258,6 +286,9 @@ const createRequest = (uri, data, options) => {
         headers['x-sdeviceid'] = cookie.sDeviceId || cookie.deviceId
         headers['x-buildver'] = xeapiBuildver
         if (cookie.MUSIC_U) headers['x-music-u'] = cookie.MUSIC_U
+        if (options.checkToken) {
+          headers['X-antiCheatToken'] = token
+        }
         const xeapiCookie = {
           ...cookie,
           os: xeapiOs,
@@ -296,24 +327,28 @@ const createRequest = (uri, data, options) => {
           __csrf: csrfToken,
           channel: cookie.channel,
           requestId: generateRequestId(),
-          ...(options.checkToken
-            ? { 'X-antiCheatToken': APP_CONF.checkToken }
-            : {}),
           // clientSign: APP_CONF.clientSign,
         }
 
         if (cookie.MUSIC_U) header['MUSIC_U'] = cookie.MUSIC_U
         if (cookie.MUSIC_A) header['MUSIC_A'] = cookie.MUSIC_A
+        if (options.checkToken) {
+          header['X-antiCheatToken'] = token
+        }
 
         headers['Cookie'] = createHeaderCookie(header)
-        headers['User-Agent'] = options.ua || chooseUserAgent('api', 'iphone')
+        headers['User-Agent'] =
+          options.ua ||
+          (cookie.os === 'osx'
+            ? 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+            : chooseUserAgent('api', 'iphone'))
 
         if (crypto === 'eapi') {
           // headers['x-aeapi'] = true // 服务器会使用gzip压缩返回值
           data.header = header
 
           encryptData = encrypt.eapi(uri, data)
-          url = (options.domain || API_DOMAIN) + '/eapi/' + uri.substr(5)
+          url = (options.domain || EAPI_DOMAIN) + '/eapi/' + uri.substr(5)
         } else if (crypto === 'api') {
           url = (options.domain || API_DOMAIN) + uri
           encryptData = data
@@ -332,6 +367,11 @@ const createRequest = (uri, data, options) => {
       data: new URLSearchParams(encryptData).toString(),
       httpAgent: createHttpAgent(),
       httpsAgent: createHttpsAgent(),
+    }
+
+    // 自定义超时
+    if (options.timeout > 0) {
+      settings.timeout = options.timeout
     }
 
     // 使用返回值加密

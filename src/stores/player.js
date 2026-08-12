@@ -47,6 +47,66 @@ export const usePlayerStore = defineStore('player', () => {
 
   let playRequestId = 0 // 用于防止并发 playSong 竞态
 
+  // 睡眠定时器
+  const sleepTimerMinutes = ref(0)
+  const sleepTimerRemaining = ref(0)
+  let sleepTimerInterval = null
+  let sleepTimerTimeout = null
+
+  // 均衡器
+  const eqEnabled = ref(false)
+  const eqPresets = {
+    flat: { label: '平坦', gains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    bass: { label: '低音增强', gains: [6, 5, 4, 2, 0, 0, 0, 0, 0, 0] },
+    vocal: { label: '人声', gains: [-2, -1, 0, 3, 5, 5, 3, 0, -1, -2] },
+    rock: { label: '摇滚', gains: [5, 3, 0, -2, -1, 0, 2, 4, 5, 5] },
+    pop: { label: '流行', gains: [-1, 2, 4, 5, 3, 0, -1, -1, 2, 3] },
+    classical: { label: '古典', gains: [0, 0, 0, 0, 0, 0, -2, -3, -4, -5] },
+    jazz: { label: '爵士', gains: [3, 2, 0, 2, -2, -2, 0, 2, 3, 4] },
+    electronic: { label: '电子', gains: [5, 4, 2, 0, -2, 0, 2, 4, 5, 5] },
+  }
+  const eqCurrentPreset = ref('flat')
+  const EQ_BANDS = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000]
+  const eqGains = ref([...eqPresets.flat.gains])
+  let audioContext = null
+  let eqFilters = []
+  let eqSourceNode = null
+
+  // 播放统计
+  const playStats = ref((() => {
+    const saved = getItem('playStats') || { totalPlays: 0, totalMs: 0, topSongs: {}, topArtists: {}, dailyPlays: {} }
+    // 迁移旧格式 topSongs（纯数字 → 对象）
+    const migrated = { ...saved }
+    const newTop = {}
+    let needsMigration = false
+    for (const [id, val] of Object.entries(migrated.topSongs || {})) {
+      if (typeof val === 'number') { needsMigration = true; newTop[id] = { name: '', artist: '', count: val } }
+      else { newTop[id] = val }
+    }
+    if (needsMigration) migrated.topSongs = newTop
+    return migrated
+  })())
+  // 异步补全旧数据的歌名
+  ;(async () => {
+    const missing = Object.entries(playStats.value.topSongs || {}).filter(([, v]) => !v.name)
+    if (missing.length === 0) return
+    try {
+      const ids = missing.map(([id]) => id).join(',')
+      const res = await getSongDetail(ids)
+      const songs = res.songs || []
+      const map = {}
+      for (const s of songs) map[s.id] = { name: s.name, artist: (s.ar || [])[0]?.name || '' }
+      const updated = { ...playStats.value, topSongs: { ...playStats.value.topSongs } }
+      for (const [id, entry] of missing) {
+        if (map[id]) updated.topSongs[id] = { ...entry, name: map[id].name, artist: map[id].artist }
+        else updated.topSongs[id] = { ...entry, name: '未知歌曲' }
+      }
+      playStats.value = updated
+      setItem('playStats', updated)
+    } catch (e) { console.error('补全歌名失败:', e) }
+  })()
+  let lastStatsTime = 0
+
   const currentSong = computed(() => {
     if (currentIndex.value >= 0 && currentIndex.value < playlist.value.length) {
       return playlist.value[currentIndex.value]
@@ -73,12 +133,31 @@ export const usePlayerStore = defineStore('player', () => {
     if (audio.value) return
     audio.value = new Audio()
     audio.value.volume = volume.value
-    audio.value.addEventListener('timeupdate', () => { currentTime.value = audio.value.currentTime * 1000 })
+    audio.value.addEventListener('timeupdate', () => {
+      currentTime.value = audio.value.currentTime * 1000
+      // 更新 MediaSession positionState
+      if ('mediaSession' in navigator && duration.value > 0) {
+        navigator.mediaSession.setPositionState({
+          duration: duration.value / 1000,
+          playbackRate: 1,
+          position: audio.value.currentTime
+        })
+      }
+      // 每 5 秒记录一次播放时长
+      const now = Date.now()
+      if (lastStatsTime > 0 && now - lastStatsTime >= 5000) {
+        recordDuration(now - lastStatsTime)
+        lastStatsTime = now
+      } else if (lastStatsTime === 0) {
+        lastStatsTime = now
+      }
+    })
     audio.value.addEventListener('loadedmetadata', () => { duration.value = audio.value.duration * 1000 })
     audio.value.addEventListener('ended', () => { onSongEnd() })
     audio.value.addEventListener('play', () => { isPlaying.value = true })
     audio.value.addEventListener('pause', () => { isPlaying.value = false })
     audio.value.addEventListener('error', (e) => { console.error('Audio error:', e); loading.value = false })
+    initEqualizer()
   }
 
   async function fetchSongUrl(songId) {
@@ -187,6 +266,10 @@ export const usePlayerStore = defineStore('player', () => {
         audio.value.src = url
         await audio.value.play()
         isPlaying.value = true
+        updateMediaSession(song)
+        if (document.hidden) showSongNotification(song)
+        recordPlay(song)
+        lastStatsTime = Date.now()
       } else {
         console.warn('无法获取播放地址:', song.name)
       }
@@ -305,6 +388,151 @@ export const usePlayerStore = defineStore('player', () => {
   // 获取当前使用的音质（优先临时音质）
   const currentQuality = computed(() => tempQuality.value || quality.value)
 
+  // MediaSession API（系统媒体控制）
+  function updateMediaSession(song) {
+    if (!('mediaSession' in navigator)) return
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: song.name || '未知歌曲',
+      artist: (song.ar || []).map(a => a.name).join(' / ') || '未知歌手',
+      album: song.al?.name || '',
+      artwork: song.al?.picUrl ? [{ src: song.al.picUrl + '?param=300y300', sizes: '300x300', type: 'image/jpeg' }] : []
+    })
+    navigator.mediaSession.setActionHandler('play', () => togglePlay())
+    navigator.mediaSession.setActionHandler('pause', () => togglePlay())
+    navigator.mediaSession.setActionHandler('previoustrack', () => playPrev())
+    navigator.mediaSession.setActionHandler('nexttrack', () => playNext())
+    navigator.mediaSession.setActionHandler('seekto', (details) => {
+      if (details.seekTime != null && audio.value) {
+        audio.value.currentTime = details.seekTime
+      }
+    })
+  }
+
+  // 桌面通知
+  async function showSongNotification(song) {
+    if (!('Notification' in window)) return
+    if (Notification.permission === 'default') {
+      await Notification.requestPermission()
+    }
+    if (Notification.permission !== 'granted') return
+    const notif = new Notification(song.name || '未知歌曲', {
+      body: (song.ar || []).map(a => a.name).join(' / ') || '未知歌手',
+      icon: song.al?.picUrl ? song.al.picUrl + '?param=120y120' : undefined,
+      silent: true
+    })
+    setTimeout(() => notif.close(), 3000)
+  }
+
+  // 睡眠定时器
+  function setSleepTimer(minutes) {
+    clearSleepTimer()
+    sleepTimerMinutes.value = minutes
+    sleepTimerRemaining.value = minutes * 60
+    sleepTimerInterval = setInterval(() => {
+      sleepTimerRemaining.value = Math.max(0, sleepTimerRemaining.value - 1)
+      if (sleepTimerRemaining.value <= 0) {
+        clearSleepTimer()
+      }
+    }, 1000)
+    sleepTimerTimeout = setTimeout(() => {
+      if (audio.value && isPlaying.value) {
+        // 渐弱效果
+        const startVol = audio.value.volume
+        const fadeSteps = 20
+        let step = 0
+        const fadeInterval = setInterval(() => {
+          step++
+          audio.value.volume = Math.max(0, startVol * (1 - step / fadeSteps))
+          if (step >= fadeSteps) {
+            clearInterval(fadeInterval)
+            audio.value.pause()
+            audio.value.volume = volume.value // restore volume setting
+          }
+        }, 200)
+      }
+    }, minutes * 60 * 1000)
+  }
+
+  function clearSleepTimer() {
+    if (sleepTimerInterval) { clearInterval(sleepTimerInterval); sleepTimerInterval = null }
+    if (sleepTimerTimeout) { clearTimeout(sleepTimerTimeout); sleepTimerTimeout = null }
+    sleepTimerMinutes.value = 0
+    sleepTimerRemaining.value = 0
+  }
+
+  // 均衡器
+  function initEqualizer() {
+    if (!audio.value || audioContext) return
+    try {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)()
+      eqSourceNode = audioContext.createMediaElementSource(audio.value)
+      eqFilters = EQ_BANDS.map((freq, i) => {
+        const filter = audioContext.createBiquadFilter()
+        filter.type = i === 0 ? 'lowshelf' : i === EQ_BANDS.length - 1 ? 'highshelf' : 'peaking'
+        filter.frequency.value = freq
+        filter.gain.value = eqGains.value[i]
+        filter.Q.value = 1.4
+        return filter
+      })
+      // Chain: source -> filter0 -> filter1 -> ... -> destination
+      let chain = eqSourceNode
+      eqFilters.forEach(f => { chain.connect(f); chain = f })
+      chain.connect(audioContext.destination)
+    } catch (e) {
+      console.warn('均衡器初始化失败:', e)
+    }
+  }
+
+  function setEqBand(index, gain) {
+    eqGains.value[index] = gain
+    if (eqFilters[index]) eqFilters[index].gain.value = gain
+    eqCurrentPreset.value = 'custom'
+  }
+
+  function setEqPreset(name) {
+    const preset = eqPresets[name]
+    if (!preset) return
+    eqCurrentPreset.value = name
+    eqGains.value = [...preset.gains]
+    eqFilters.forEach((f, i) => { f.gain.value = preset.gains[i] })
+  }
+
+  function toggleEq() {
+    if (!audioContext) initEqualizer()
+    eqEnabled.value = !eqEnabled.value
+    if (eqFilters.length > 0) {
+      eqFilters.forEach((f, i) => {
+        f.gain.value = eqEnabled.value ? eqGains.value[i] : 0
+      })
+    }
+  }
+
+  // 播放统计
+  function recordPlay(song) {
+    if (!song || song._isLocal) return
+    const stats = { ...playStats.value }
+    stats.totalPlays++
+    const today = new Date().toISOString().slice(0, 10)
+    stats.dailyPlays = { ...stats.dailyPlays, [today]: (stats.dailyPlays[today] || 0) + 1 }
+    const prevSongEntry = stats.topSongs[song.id]
+    stats.topSongs = { ...stats.topSongs, [song.id]: {
+      name: song.name || '未知歌曲',
+      artist: (song.ar || [])[0]?.name || '未知',
+      count: (typeof prevSongEntry === 'object' ? prevSongEntry.count : prevSongEntry || 0) + 1
+    }}
+    const artistName = (song.ar || [])[0]?.name || '未知'
+    stats.topArtists = { ...stats.topArtists, [artistName]: (stats.topArtists[artistName] || 0) + 1 }
+    playStats.value = stats
+    setItem('playStats', stats)
+  }
+
+  function recordDuration(ms) {
+    const stats = { ...playStats.value }
+    stats.totalMs = (stats.totalMs || 0) + ms
+    playStats.value = stats
+    setItem('playStats', stats)
+  }
+
   function clearPlaylist() {
     if (audio.value) { audio.value.pause(); audio.value.src = '' }
     playlist.value = []; currentIndex.value = -1; isPlaying.value = false
@@ -321,5 +549,9 @@ export const usePlayerStore = defineStore('player', () => {
     currentSong, progress, songDetail, initAudio, playSong, togglePlay,
     playNext, playPrev, seekTo, setVolume, setPlayMode, setQuality, setTempQuality,
     clearPlaylist, downloadSong,
+    updateMediaSession, showSongNotification,
+    sleepTimerMinutes, sleepTimerRemaining, setSleepTimer, clearSleepTimer,
+    eqEnabled, eqPresets, eqCurrentPreset, eqGains, EQ_BANDS, setEqBand, setEqPreset, toggleEq,
+    playStats, recordPlay, recordDuration,
   }
 })

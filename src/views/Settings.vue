@@ -85,6 +85,28 @@
         </div>
       </div>
       <div class="setting-item">
+        <label class="setting-label">均衡器</label>
+        <div class="eq-section">
+          <div class="eq-toggle-row">
+            <button class="quality-btn" :class="{ active: playerStore.eqEnabled }" @click="playerStore.toggleEq()">
+              {{ playerStore.eqEnabled ? '已开启' : '已关闭' }}
+            </button>
+            <select v-if="playerStore.eqEnabled" class="eq-preset-select" :value="playerStore.eqCurrentPreset" @change="playerStore.setEqPreset($event.target.value)">
+              <option v-for="(preset, key) in playerStore.eqPresets" :key="key" :value="key">{{ preset.label }}</option>
+            </select>
+          </div>
+          <div v-if="playerStore.eqEnabled" class="eq-bands">
+            <div v-for="(freq, i) in playerStore.EQ_BANDS" :key="freq" class="eq-band">
+              <input type="range" class="eq-slider" :min="-12" :max="12" :step="1"
+                :value="playerStore.eqGains[i]"
+                @input="playerStore.setEqBand(i, Number($event.target.value))" orient="vertical" />
+              <span class="eq-freq">{{ freq >= 1000 ? (freq/1000) + 'k' : freq }}</span>
+              <span class="eq-gain">{{ playerStore.eqGains[i] }}dB</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="setting-item">
         <label class="setting-label">播放模式</label>
         <div class="quality-options">
           <button v-for="m in modeOptions" :key="m.value" class="quality-btn" :class="{ active: playerStore.playMode === m.value }" @click="playerStore.setPlayMode(m.value)">{{ m.label }}</button>
@@ -104,6 +126,39 @@
           <input v-model="downloadDir" type="text" class="input-field download-dir-input" placeholder="例如: ~/Music/CloudMusic" @blur="saveDownloadDir" @keydown.enter="saveDownloadDir" />
           <button class="btn-browse" @click="browseDir" title="选择目录"><Icon name="folder" :size="14" /></button>
           <span v-if="dirSaved" class="port-saved">✓</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification & Media Settings -->
+    <div class="setting-section">
+      <h2 class="section-title"><Icon name="volume2" :size="16" /> 通知与媒体</h2>
+      <div class="setting-item">
+        <label class="setting-label">桌面通知</label>
+        <label class="toggle-switch">
+          <input type="checkbox" :checked="settingStore.enableNotifications" @change="settingStore.setEnableNotifications($event.target.checked)" />
+          <span class="toggle-track"></span>
+        </label>
+        <span class="detail-hint">切歌时显示系统通知</span>
+      </div>
+      <div class="setting-item">
+        <label class="setting-label">媒体控制</label>
+        <label class="toggle-switch">
+          <input type="checkbox" :checked="settingStore.enableMediaSession" @change="settingStore.setEnableMediaSession($event.target.checked)" />
+          <span class="toggle-track"></span>
+        </label>
+        <span class="detail-hint">支持耳机/系统媒体控制</span>
+      </div>
+    </div>
+
+    <!-- Shortcut Settings -->
+    <div class="setting-section">
+      <h2 class="section-title"><Icon name="settings" :size="16" /> 快捷键</h2>
+      <div v-for="(key, action) in settingStore.shortcuts" :key="action" class="setting-item shortcut-item">
+        <label class="setting-label">{{ shortcutLabels[action] || action }}</label>
+        <div class="shortcut-input-wrap">
+          <input type="text" class="input-field shortcut-input" :value="key" readonly @keydown.prevent="captureShortcut($event, action)" />
+          <button class="shortcut-reset-btn" @click="resetShortcut(action)" title="重置">↺</button>
         </div>
       </div>
     </div>
@@ -297,6 +352,35 @@ onMounted(() => {
     })
   }
 })
+
+const shortcutLabels = {
+  playPause: '播放/暂停',
+  prev: '上一首',
+  next: '下一首',
+  toggleLyric: '歌词',
+}
+
+function captureShortcut(e, action) {
+  const parts = []
+  if (e.ctrlKey) parts.push('CommandOrControl')
+  if (e.metaKey) parts.push('CommandOrControl')
+  if (e.altKey) parts.push('Alt')
+  if (e.shiftKey) parts.push('Shift')
+  if (!['Control', 'Meta', 'Alt', 'Shift'].includes(e.key)) {
+    parts.push(e.key.length === 1 ? e.key.toUpperCase() : e.key)
+  }
+  if (parts.length > 1) {
+    settingStore.setShortcut(action, parts.join('+'))
+    // 通知 electron 更新快捷键
+    window.electronAPI?.updateShortcuts?.(settingStore.shortcuts)
+  }
+}
+
+function resetShortcut(action) {
+  const defaults = { playPause: 'CommandOrControl+Space', prev: 'CommandOrControl+Left', next: 'CommandOrControl+Right', toggleLyric: 'CommandOrControl+L' }
+  settingStore.setShortcut(action, defaults[action] || '')
+  window.electronAPI?.updateShortcuts?.(settingStore.shortcuts)
+}
 </script>
 
 <style scoped>
@@ -393,4 +477,18 @@ onMounted(() => {
 .btn-browse:hover { background: rgba(128,128,128,0.15); color: var(--text-primary); }
 .api-server-addr { font-size: 11px; color: var(--text-tertiary); margin-top: 8px; font-family: monospace; }
 .detail-hint { font-size: 11px; color: var(--text-tertiary); margin-left: 4px; }
+
+.eq-section { margin-top: 8px; }
+.eq-toggle-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.eq-preset-select { padding: 4px 8px; background: var(--bg-input); border: 1px solid var(--border-light); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px; outline: none; }
+.eq-bands { display: flex; gap: 8px; padding: 12px 0; }
+.eq-band { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.eq-slider { writing-mode: vertical-lr; direction: rtl; width: 28px; height: 120px; appearance: slider-vertical; -webkit-appearance: slider-vertical; }
+.eq-freq { font-size: 10px; color: var(--text-tertiary); }
+.eq-gain { font-size: 10px; color: var(--text-secondary); }
+.shortcut-item { gap: 12px; }
+.shortcut-input-wrap { display: flex; align-items: center; gap: 6px; }
+.shortcut-input { width: 180px; text-align: center; font-family: monospace; font-size: 12px; cursor: pointer; }
+.shortcut-reset-btn { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.06); color: var(--text-secondary); font-size: 14px; transition: all 0.15s; }
+.shortcut-reset-btn:hover { background: rgba(255,255,255,0.12); color: var(--text-primary); }
 </style>

@@ -143,18 +143,28 @@ function createTray() {
   tray.on('double-click', () => { if (mainWindow) mainWindow.show() })
 }
 
-function registerShortcuts() {
-  const shortcuts = [
-    { key: 'CommandOrControl+Space', action: 'play-pause' },
-    { key: 'CommandOrControl+Left', action: 'prev' },
-    { key: 'CommandOrControl+Right', action: 'next' },
-  ]
-  for (const { key, action } of shortcuts) {
-    const success = globalShortcut.register(key, () => {
+function registerShortcuts(customShortcuts) {
+  globalShortcut.unregisterAll()
+  const shortcuts = customShortcuts || {
+    playPause: 'CommandOrControl+Space',
+    prev: 'CommandOrControl+Left',
+    next: 'CommandOrControl+Right',
+    toggleLyric: 'CommandOrControl+L',
+  }
+  const actionMap = {
+    playPause: 'play-pause',
+    prev: 'prev',
+    next: 'next',
+    toggleLyric: 'toggle-lyric',
+  }
+  for (const [key, action] of Object.entries(actionMap)) {
+    const shortcutKey = shortcuts[key]
+    if (!shortcutKey) continue
+    const success = globalShortcut.register(shortcutKey, () => {
       mainWindow?.webContents.send('shortcut', action)
     })
     if (!success) {
-      console.warn(`[Shortcut] 注册失败: ${key}`)
+      console.warn('[Shortcut] 注册失败:', shortcutKey)
     }
   }
 }
@@ -285,5 +295,9 @@ ipcMain.handle('reset-app', () => {
   // 清除 userData 下的 localStorage 数据目录（Electron）
   const storagePath = path.join(app.getPath('userData'), 'Local Storage')
   if (fs.existsSync(storagePath)) fs.rmSync(storagePath, { recursive: true, force: true })
+  return true
+})
+ipcMain.handle('update-shortcuts', (_event, shortcuts) => {
+  registerShortcuts(shortcuts)
   return true
 })

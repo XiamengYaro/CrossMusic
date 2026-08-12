@@ -70,6 +70,31 @@ const routes = [
     component: () => import('@/views/AlbumDetail.vue'),
   },
   {
+    path: '/fm',
+    name: 'PrivateFM',
+    component: () => import('@/views/PrivateFM.vue'),
+  },
+  {
+    path: '/albums',
+    name: 'AlbumCollection',
+    component: () => import('@/views/AlbumCollection.vue'),
+  },
+  {
+    path: '/podcast',
+    name: 'Podcast',
+    component: () => import('@/views/Podcast.vue'),
+  },
+  {
+    path: '/podcast/:id',
+    name: 'PodcastDetail',
+    component: () => import('@/views/PodcastDetail.vue'),
+  },
+  {
+    path: '/statistics',
+    name: 'Statistics',
+    component: () => import('@/views/Statistics.vue'),
+  },
+  {
     path: '/:pathMatch(.*)*',
     redirect: '/recommend',
   },

@@ -70,7 +70,7 @@
             <img :src="pl.picUrl + '?param=300y300'" class="playlist-cover" />
             <div class="playlist-info">
               <span class="playlist-name text-ellipsis">{{ pl.name }}</span>
-              <span class="playlist-playcount">播放量: {{ formatCount(pl.playcount) }}</span>
+              <span class="playlist-playcount">播放量: {{ formatCount(pl.playCount) }}</span>
             </div>
           </div>
         </div>

@@ -16,4 +16,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   clearLogs: () => ipcRenderer.invoke('clear-logs'),
   clearAllData: () => ipcRenderer.invoke('clear-all-data'),
   resetApp: () => ipcRenderer.invoke('reset-app'),
+  updateShortcuts: (shortcuts) => ipcRenderer.invoke('update-shortcuts', shortcuts),
+  onShortcut: (callback) => ipcRenderer.on('shortcut', (_e, action) => callback(action)),
+  offShortcut: (callback) => ipcRenderer.removeListener('shortcut', callback),
 })
