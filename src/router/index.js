@@ -95,6 +95,16 @@ const routes = [
     component: () => import('@/views/Statistics.vue'),
   },
   {
+    path: '/mv',
+    name: 'MVList',
+    component: () => import('@/views/MVList.vue'),
+  },
+  {
+    path: '/mv/:id',
+    name: 'MVPlayer',
+    component: () => import('@/views/MVPlayer.vue'),
+  },
+  {
     path: '/:pathMatch(.*)*',
     redirect: '/recommend',
   },

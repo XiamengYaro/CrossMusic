@@ -19,14 +19,22 @@
           <Icon name="close" :size="10" />
         </button>
       </div>
-      <div v-if="searchFocused && !searchKeyword" class="search-dropdown">
-        <div v-if="settingStore.searchHistory.length > 0" class="dropdown-section">
+      <div v-if="searchFocused" class="search-dropdown">
+        <div v-if="!searchKeyword && settingStore.searchHistory.length > 0" class="dropdown-section">
           <div class="dropdown-header">
             <span>搜索历史</span>
             <span class="dropdown-action" @mousedown.prevent="settingStore.clearSearchHistory()">清空</span>
           </div>
           <div class="dropdown-tags">
             <span v-for="h in settingStore.searchHistory" :key="h" class="tag-item" @mousedown.prevent="selectSearch(h)">{{ h }}</span>
+          </div>
+        </div>
+        <div v-if="searchKeyword && suggestions.length > 0" class="dropdown-section">
+          <div class="suggestion-list">
+            <div v-for="s in suggestions" :key="s.keyword" class="suggestion-item" @mousedown.prevent="selectSearch(s.keyword)">
+              <Icon name="search" :size="12" class="suggestion-icon" />
+              <span class="suggestion-text">{{ s.keyword }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -42,7 +50,7 @@
         @click="navigate(item.route)"
       >
         <Icon :name="item.icon" :size="18" class="menu-icon" />
-        <span class="menu-label">{{ item.label }}</span>
+        <span class="menu-label">{{ t(item.key) }}</span>
       </div>
     </div>
 
@@ -54,25 +62,32 @@
         <span>更多</span>
         <Icon name="chevronLeft" :size="14" class="chevron" :class="{ open: moreOpen }" />
       </div>
-      <div v-show="moreOpen" class="menu-group-items">
-        <div
-          v-for="item in moreItems"
-          :key="item.route"
-          class="menu-item"
-          :class="{ active: currentRoute === item.route }"
-          @click="navigate(item.route)"
-        >
-          <Icon :name="item.icon" :size="18" class="menu-icon" />
-          <span class="menu-label">{{ item.label }}</span>
+      <Transition name="expand">
+        <div v-if="moreOpen" class="menu-group-items">
+          <div
+            v-for="(item, idx) in moreItems"
+            :key="item.route"
+            class="menu-item menu-item-expand"
+            :class="{ active: currentRoute === item.route }"
+            :style="{ animationDelay: idx * 40 + 'ms' }"
+            @click="navigate(item.route)"
+          >
+            <Icon :name="item.icon" :size="18" class="menu-icon" />
+            <span class="menu-label">{{ t(item.key) }}</span>
+          </div>
         </div>
-      </div>
+      </Transition>
     </div>
 
     <div class="separator"></div>
 
     <!-- Playlists -->
     <div class="playlist-section">
-      <div class="section-title">创建的歌单</div>
+      <div class="section-title">创建的歌单
+        <button class="add-playlist-btn" @click="showCreateDialog = true" title="新建歌单">
+          <Icon name="plus" :size="12" />
+        </button>
+      </div>
       <div class="playlist-list">
         <div
           v-for="pl in playlists"
@@ -104,6 +119,25 @@
       </template>
     </div>
 
+    <!-- Create Playlist Dialog -->
+    <Teleport to="body">
+      <div v-if="showCreateDialog" class="dialog-overlay" @click.self="showCreateDialog = false">
+        <div class="dialog-box">
+          <div class="dialog-header">
+            <span class="dialog-title">新建歌单</span>
+            <button class="dialog-close" @click="showCreateDialog = false"><Icon name="close" :size="16" /></button>
+          </div>
+          <div class="dialog-body">
+            <input v-model="newPlaylistName" class="dialog-input" placeholder="输入歌单名称" @keyup.enter="handleCreatePlaylist" autofocus />
+          </div>
+          <div class="dialog-footer">
+            <button class="dialog-btn cancel" @click="showCreateDialog = false">取消</button>
+            <button class="dialog-btn confirm" @click="handleCreatePlaylist" :disabled="!newPlaylistName.trim()">创建</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Bottom -->
     <div class="sidebar-bottom">
       <div class="user-area" @click="handleUserClick">
@@ -119,11 +153,7 @@
           <span class="user-label">{{ userStore.isLoggedIn ? '已登录' : '点击登录' }}</span>
         </div>
       </div>
-      <div class="sidebar-bottom-actions">
-        <button class="sidebar-action-btn" @click="handleClose" title="关闭">
-          <Icon name="close" :size="18" />
-        </button>
-      </div>
+
     </div>
   </div>
 </template>
@@ -133,7 +163,10 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useSettingStore } from '@/stores/setting'
-import { getUserPlaylist } from '@/api/playlist'
+import { useI18n } from '@/i18n'
+import { getUserPlaylist, createPlaylist } from '@/api/playlist'
+import { searchSuggest } from '@/api/song'
+import { showToast } from '@/utils/toast'
 import Icon from '@/components/icons/Icon.vue'
 
 const emit = defineEmits(['show-login'])
@@ -148,25 +181,55 @@ const collectedPlaylists = ref([])
 const searchKeyword = ref('')
 const searchFocused = ref(false)
 const moreOpen = ref(false)
+const suggestions = ref([])
+let suggestTimer = null
+const showCreateDialog = ref(false)
+const newPlaylistName = ref('')
+
+watch(searchKeyword, (val) => {
+  clearTimeout(suggestTimer)
+  if (!val.trim()) { suggestions.value = []; return }
+  suggestTimer = setTimeout(async () => {
+    try {
+      const res = await searchSuggest(val.trim())
+      const all = res.result?.allMatch || []
+      suggestions.value = all.slice(0, 8).map(item => ({ keyword: item.keyword || item }))
+    } catch { suggestions.value = [] }
+  }, 200)
+})
+
+async function handleCreatePlaylist() {
+  const name = newPlaylistName.value.trim()
+  if (!name) return
+  try {
+    await createPlaylist(name)
+    showCreateDialog.value = false
+    newPlaylistName.value = ''
+    showToast('歌单创建成功')
+    await loadPlaylists()
+  } catch (e) { showToast('创建失败') }
+}
 
 const primaryItems = [
-  { label: '推荐', icon: 'home', route: '/recommend' },
-  { label: '私人FM', icon: 'radio', route: '/fm' },
-  { label: '我喜欢的音乐', icon: 'heart', route: '/liked' },
-  { label: '音乐云盘', icon: 'cloud', route: '/cloud' },
-  { label: '最近播放', icon: 'clock', route: '/recent' },
+  { key: 'recommend', icon: 'home', route: '/recommend' },
+  { key: 'privateFM', icon: 'radio', route: '/fm' },
+  { key: 'liked', icon: 'heart', route: '/liked' },
+  { key: 'cloudDisk', icon: 'cloud', route: '/cloud' },
+  { key: 'recentPlay', icon: 'clock', route: '/recent' },
 ]
 
 const moreItems = [
-  { label: '每日推荐', icon: 'calendar', route: '/daily' },
-  { label: '本地音乐', icon: 'folder', route: '/local' },
-  { label: '播客电台', icon: 'headphones', route: '/podcast' },
-  { label: '收藏专辑', icon: 'star', route: '/albums' },
-  { label: '播放统计', icon: 'fire', route: '/statistics' },
-  { label: '设置', icon: 'settings', route: '/settings' },
+  { key: 'dailyRecommend', icon: 'calendar', route: '/daily' },
+  { key: 'localMusic', icon: 'folder', route: '/local' },
+  { key: 'podcast', icon: 'headphones', route: '/podcast' },
+  { key: 'albumCollection', icon: 'star', route: '/albums' },
+  { key: 'mv', icon: 'video', route: '/mv' },
+  { key: 'statistics', icon: 'fire', route: '/statistics' },
+  { key: 'settings', icon: 'settings', route: '/settings' },
 ]
 
 const currentRoute = computed(() => route.path)
+const { t } = useI18n()
 
 // 如果当前路由在 moreItems 中，自动展开
 if (moreItems.some(i => route.path.startsWith(i.route))) moreOpen.value = true
@@ -180,16 +243,11 @@ function handleUserClick() {
     emit('show-login')
   }
 }
-function handleClose() {
-  if (window.electronAPI?.closeWindow) window.electronAPI.closeWindow()
-  else window.close()
-}
-
 function doSearch() {
   const q = searchKeyword.value.trim()
   if (q) {
     settingStore.addSearchHistory(q)
-    router.push({ path: '/search', query: { q } })
+    router.push({ path: '/search', query: { keywords: q } })
     searchKeyword.value = ''
     searchInputRef.value?.blur()
   }
@@ -225,7 +283,6 @@ onMounted(() => {
   window.addEventListener('keydown', handleShortcut)
   window.electronAPI?.onShortcut?.((action) => {
     if (action === 'search') searchInputRef.value?.focus()
-    if (action === 'close') handleClose()
   })
 })
 onUnmounted(() => {
@@ -239,7 +296,11 @@ watch(() => userStore.isLoggedIn, () => loadPlaylists())
 .sidebar {
   width: 220px; min-width: 220px; height: 100vh;
   display: flex; flex-direction: column;
-  background: var(--bg-sidebar); backdrop-filter: blur(30px) saturate(1.2);
+  background: var(--bg-sidebar);
+  backdrop-filter: blur(60px) saturate(180%);
+  -webkit-backdrop-filter: blur(60px) saturate(180%);
+  border-right: 1px solid rgba(255,255,255,0.08);
+  box-shadow: inset -1px 0 0 rgba(255,255,255,0.04);
   border-right: 1px solid var(--border-light); user-select: none;
   padding-top: 52px;
 }
@@ -287,6 +348,11 @@ watch(() => userStore.isLoggedIn, () => loadPlaylists())
   font-size: 12px; color: var(--text-secondary); cursor: pointer; transition: all 0.15s;
 }
 .tag-item:hover { background: var(--panel-hover-strong); color: var(--text-primary); }
+.suggestion-list { display: flex; flex-direction: column; }
+.suggestion-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.12s; font-size: 13px; color: var(--text-secondary); }
+.suggestion-item:hover { background: var(--panel-hover); color: var(--text-primary); }
+.suggestion-icon { color: var(--text-tertiary); flex-shrink: 0; }
+.suggestion-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .menu-section { padding: 4px 8px; }
 .menu-item {
@@ -308,6 +374,12 @@ watch(() => userStore.isLoggedIn, () => loadPlaylists())
 .chevron { transition: transform 0.2s; transform: rotate(-90deg); }
 .chevron.open { transform: rotate(90deg); }
 .menu-group-items { overflow: hidden; }
+.expand-enter-active { animation: expand-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+.expand-leave-active { animation: expand-out 0.2s ease-in forwards; }
+@keyframes expand-in { from { max-height: 0; opacity: 0; transform: translateY(-8px); } to { max-height: 400px; opacity: 1; transform: translateY(0); } }
+@keyframes expand-out { from { max-height: 400px; opacity: 1; transform: translateY(0); } to { max-height: 0; opacity: 0; transform: translateY(-8px); } }
+.menu-item-expand { animation: item-slide-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@keyframes item-slide-in { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
 
 .separator { height: 1px; background: var(--border-light); margin: 4px 16px; }
 
@@ -322,7 +394,29 @@ watch(() => userStore.isLoggedIn, () => loadPlaylists())
 .section-title {
   font-size: 11px; font-weight: 600; color: var(--text-tertiary);
   text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 8px 4px;
+  display: flex; align-items: center; justify-content: space-between;
 }
+.add-playlist-btn {
+  width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  color: var(--text-tertiary); transition: all 0.15s; cursor: pointer;
+}
+.add-playlist-btn:hover { background: var(--panel-hover); color: var(--text-primary); }
+.dialog-overlay { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; }
+.dialog-box { width: 320px; background: var(--bg-card); border-radius: var(--radius-lg); border: 1px solid var(--border-light); box-shadow: 0 16px 48px rgba(0,0,0,0.4); overflow: hidden; }
+.dialog-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 12px; }
+.dialog-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.dialog-close { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); transition: all 0.15s; cursor: pointer; }
+.dialog-close:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.dialog-body { padding: 0 20px 16px; }
+.dialog-input { width: 100%; padding: 10px 14px; background: var(--panel-input-bg); border: 1px solid var(--border-light); border-radius: var(--radius-md); color: var(--text-primary); font-size: 14px; outline: none; transition: border-color 0.15s; box-sizing: border-box; }
+.dialog-input:focus { border-color: var(--accent); }
+.dialog-footer { display: flex; gap: 8px; padding: 12px 20px 16px; justify-content: flex-end; }
+.dialog-btn { padding: 8px 20px; border-radius: var(--radius-md); font-size: 13px; cursor: pointer; transition: all 0.15s; }
+.dialog-btn.cancel { background: var(--hover-overlay); color: var(--text-secondary); }
+.dialog-btn.cancel:hover { background: var(--hover-overlay); }
+.dialog-btn.confirm { background: var(--accent); color: white; }
+.dialog-btn.confirm:hover { opacity: 0.9; }
+.dialog-btn.confirm:disabled { opacity: 0.4; cursor: not-allowed; }
 .playlist-list { display: flex; flex-direction: column; }
 .playlist-item { font-size: 13px; }
 .empty-tip { font-size: 12px; color: var(--text-tertiary); padding: 8px; }
@@ -353,11 +447,5 @@ watch(() => userStore.isLoggedIn, () => loadPlaylists())
 }
 .user-label { font-size: 10px; color: var(--text-tertiary); }
 
-.sidebar-bottom-actions { display: flex; gap: 4px; flex-shrink: 0; }
-.sidebar-action-btn {
-  width: 32px; height: 32px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  color: var(--text-tertiary); transition: all 0.15s;
-}
-.sidebar-action-btn:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+
 </style>
