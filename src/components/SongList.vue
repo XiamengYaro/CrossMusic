@@ -1,5 +1,10 @@
 <template>
   <div class="song-list">
+    <div class="batch-download-bar" v-if="songs.length > 1">
+      <button class="btn-batch-download" @click="showBatchDownload = true">
+        <Icon name="download" :size="14" /> 批量下载
+      </button>
+    </div>
     <div class="song-list-header">
       <div class="col-index">#</div>
       <div class="col-title" @click="toggleSort('name')" :class="{ sortable: true, sorted: sortKey === 'name' }">
@@ -15,39 +20,81 @@
         时长 <span class="sort-arrow" v-if="sortKey === 'duration'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
       </div>
     </div>
-    <div
-      v-for="(song, index) in sortedSongs"
-      :key="song.id"
-      class="song-item"
-      :class="{ active: isActive(song.id), playing: isPlaying(song.id) }"
-      @dblclick="playSong(song)"
-      @contextmenu="onContextMenu($event, song)"
-    >
-      <div class="col-index">
-        <span v-if="isPlaying(song.id)" class="playing-icon"><Icon name="music" :size="14" /></span>
-        <span v-else class="index-num">{{ index + 1 }}</span>
-      </div>
-      <div class="col-title">
-        <img v-if="song.al?.picUrl" :src="song.al.picUrl + '?param=40y40'" class="song-cover" />
-        <div class="song-info">
-          <span class="song-name text-ellipsis">{{ song.name }}</span>
-          <span v-if="song.alia?.length" class="song-alias text-ellipsis">{{ song.alia[0] }}</span>
+    <template v-if="!useVirtual">
+      <div
+        v-for="(song, index) in sortedSongs"
+        :key="song.id"
+        class="song-item"
+        :class="{ active: isActive(song.id), playing: isPlaying(song.id) }"
+        @dblclick="playSong(song)"
+        @contextmenu="onContextMenu($event, song)"
+      >
+        <div class="col-index">
+          <span v-if="isPlaying(song.id)" class="playing-icon"><Icon name="music" :size="14" /></span>
+          <span v-else class="index-num">{{ index + 1 }}</span>
+        </div>
+        <div class="col-title">
+          <span class="cover-wrap"><img v-if="song.al?.picUrl" :src="song.al.picUrl + '?param=40y40'" class="song-cover" /></span>
+          <div class="song-info">
+            <span class="song-name text-ellipsis">{{ song.name }}</span>
+            <span v-if="song.alia?.length" class="song-alias text-ellipsis">{{ song.alia[0] }}</span>
+          </div>
+        </div>
+        <div class="col-artist text-ellipsis">
+          <span v-for="(ar, i) in (song.ar || song.artists || [])" :key="ar.id">
+            <span class="artist-link" @click.stop="goArtist(ar.id)">{{ ar.name }}</span>
+            <span v-if="i < (song.ar || song.artists || []).length - 1"> / </span>
+          </span>
+        </div>
+        <div class="col-album text-ellipsis"><span class="album-link" @click.stop="goAlbum(song.al?.id)">{{ song.al?.name || song.album?.name || '' }}</span></div>
+        <div class="col-duration">
+          <span class="duration-text">{{ formatTime(song.dt || song.duration) }}</span>
+          <button v-if="song.mv" class="btn-mv" title="MV" @click.stop="goMv(song.mv)">
+            <Icon name="video" :size="14" />
+          </button>
+          <button class="btn-download" title="下载" @click.stop="downloadSong(song)">
+            <Icon name="download" :size="14" />
+          </button>
         </div>
       </div>
-      <div class="col-artist text-ellipsis">
-        <span v-for="(ar, i) in (song.ar || song.artists || [])" :key="ar.id">
-          <span class="artist-link" @click.stop="goArtist(ar.id)">{{ ar.name }}</span>
-          <span v-if="i < (song.ar || song.artists || []).length - 1"> / </span>
-        </span>
+    </template>
+    <template v-else>
+      <div :style="{ height: topSpacerHeight + 'px' }"></div>
+      <div
+        v-for="item in visibleItems"
+        :key="item.song.id"
+        class="song-item"
+        :class="{ active: isActive(item.song.id), playing: isPlaying(item.song.id) }"
+        @dblclick="playSong(item.song)"
+        @contextmenu="onContextMenu($event, item.song)"
+      >
+        <div class="col-index">
+          <span v-if="isPlaying(item.song.id)" class="playing-icon"><Icon name="music" :size="14" /></span>
+          <span v-else class="index-num">{{ item.index + 1 }}</span>
+        </div>
+        <div class="col-title">
+          <span class="cover-wrap"><img v-if="item.song.al?.picUrl" :src="item.song.al.picUrl + '?param=40y40'" class="song-cover" /></span>
+          <div class="song-info">
+            <span class="song-name text-ellipsis">{{ item.song.name }}</span>
+            <span v-if="item.song.alia?.length" class="song-alias text-ellipsis">{{ item.song.alia[0] }}</span>
+          </div>
+        </div>
+        <div class="col-artist text-ellipsis">
+          <span v-for="(ar, i) in (item.song.ar || item.song.artists || [])" :key="ar.id">
+            <span class="artist-link" @click.stop="goArtist(ar.id)">{{ ar.name }}</span>
+            <span v-if="i < (item.song.ar || item.song.artists || []).length - 1"> / </span>
+          </span>
+        </div>
+        <div class="col-album text-ellipsis"><span class="album-link" @click.stop="goAlbum(item.song.al?.id)">{{ item.song.al?.name || item.song.album?.name || '' }}</span></div>
+        <div class="col-duration">
+          <span class="duration-text">{{ formatTime(item.song.dt || item.song.duration) }}</span>
+          <button class="btn-download" title="下载" @click.stop="downloadSong(item.song)">
+            <Icon name="download" :size="14" />
+          </button>
+        </div>
       </div>
-      <div class="col-album text-ellipsis"><span class="album-link" @click.stop="goAlbum(song.al?.id)">{{ song.al?.name || song.album?.name || '' }}</span></div>
-      <div class="col-duration">
-        <span class="duration-text">{{ formatTime(song.dt || song.duration) }}</span>
-        <button class="btn-download" title="下载" @click.stop="downloadSong(song)">
-          <Icon name="download" :size="14" />
-        </button>
-      </div>
-    </div>
+      <div :style="{ height: bottomSpacerHeight + 'px' }"></div>
+    </template>
     <div v-if="songs.length === 0 && !loading" class="empty-state">
       <p>暂无歌曲</p>
     </div>
@@ -67,27 +114,41 @@
       :song="downloadSongData"
       @close="showDownloadDialog = false"
     />
+    <BatchDownloadDialog
+      v-if="showBatchDownload"
+      :songs="songs"
+      @close="showBatchDownload = false"
+    />
   </div>
 </template>
 
 <script setup>
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/player'
 import { formatTime } from '@/utils/format'
 import Icon from '@/components/icons/Icon.vue'
 import SongContextMenu from '@/components/SongContextMenu.vue'
 import DownloadDialog from '@/components/DownloadDialog.vue'
+import BatchDownloadDialog from '@/components/BatchDownloadDialog.vue'
 
 const props = defineProps({
   songs: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
+  virtual: { type: Boolean, default: false },
 })
 
 defineEmits(['open-comments'])
 
 const sortKey = ref('')
 const sortOrder = ref('asc')
+const scrollY = ref(0)
+const listRef = ref(null)
+
+const ROW_HEIGHT = 52
+const BUFFER = 15
+
+const useVirtual = computed(() => props.virtual && sortedSongs.value.length > 200)
 
 const sortedSongs = computed(() => {
   if (!sortKey.value) return props.songs
@@ -104,6 +165,68 @@ const sortedSongs = computed(() => {
   })
 })
 
+function getListOffsetTop() {
+  const el = document.querySelector('.song-list-header')
+  return el ? el.getBoundingClientRect().top + window.scrollY : 0
+}
+
+const visibleRange = computed(() => {
+  if (!useVirtual.value) return { start: 0, end: sortedSongs.value.length }
+  const listTop = getListOffsetTop()
+  const relativeScroll = Math.max(0, scrollY.value - listTop)
+  const viewportH = window.innerHeight
+  const start = Math.max(0, Math.floor(relativeScroll / ROW_HEIGHT) - BUFFER)
+  const end = Math.min(
+    sortedSongs.value.length,
+    Math.ceil((relativeScroll + viewportH) / ROW_HEIGHT) + BUFFER
+  )
+  return { start, end }
+})
+
+const visibleItems = computed(() => {
+  const { start, end } = visibleRange.value
+  const items = []
+  for (let i = start; i < end; i++) {
+    items.push({ song: sortedSongs.value[i], index: i })
+  }
+  return items
+})
+
+const topSpacerHeight = computed(() => visibleRange.value.start * ROW_HEIGHT)
+const bottomSpacerHeight = computed(() => {
+  const total = sortedSongs.value.length
+  const end = visibleRange.value.end
+  return Math.max(0, (total - end) * ROW_HEIGHT)
+})
+
+let scrollTimer = null
+function onScroll() {
+  if (scrollTimer) return
+  scrollTimer = requestAnimationFrame(() => {
+    scrollY.value = window.scrollY
+    scrollTimer = null
+  })
+}
+
+onMounted(() => {
+  if (useVirtual.value) {
+    window.addEventListener('scroll', onScroll, { passive: true })
+  }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', onScroll)
+  if (scrollTimer) cancelAnimationFrame(scrollTimer)
+})
+
+watch(useVirtual, (val) => {
+  if (val) {
+    window.addEventListener('scroll', onScroll, { passive: true })
+  } else {
+    window.removeEventListener('scroll', onScroll)
+  }
+})
+
 function toggleSort(key) {
   if (sortKey.value === key) {
     sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
@@ -116,8 +239,8 @@ function toggleSort(key) {
 const router = useRouter()
 const playerStore = usePlayerStore()
 
-// 下载对话框状态
 const showDownloadDialog = ref(false)
+const showBatchDownload = ref(false)
 const downloadSongData = ref(null)
 
 function playSong(song) {
@@ -144,6 +267,10 @@ function onContextMenu(e, song) {
 
 function goArtist(id) {
   router.push(`/artist/${id}`)
+}
+
+function goMv(id) {
+  if (id) router.push(`/mv/${id}`)
 }
 
 function goAlbum(id) {
@@ -178,13 +305,21 @@ async function downloadSong(song) {
   display: flex;
   align-items: center;
   padding: 8px 16px;
+  height: 52px;
   border-radius: var(--radius-sm);
   cursor: default;
-  transition: background 0.15s;
+  transition: background 0.15s ease;
 }
 
 .song-item:hover {
   background: var(--bg-hover);
+}
+.song-item:hover .song-cover {
+  transform: scale(1.15);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.song-item:hover .song-name {
+  color: var(--accent);
 }
 
 .song-item.active {
@@ -216,11 +351,22 @@ async function downloadSong(song) {
   gap: 10px;
 }
 
-.song-cover {
+.cover-wrap {
   width: 36px;
   height: 36px;
   border-radius: 4px;
   flex-shrink: 0;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.song-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  will-change: transform;
 }
 
 .song-info {
@@ -232,6 +378,7 @@ async function downloadSong(song) {
 .song-name {
   font-size: 14px;
   font-weight: 500;
+  transition: color 0.15s ease;
 }
 
 .song-alias {
@@ -300,7 +447,7 @@ async function downloadSong(song) {
 
 .btn-download:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--hover-overlay);
 }
 
 .song-item:hover .btn-download {
@@ -332,5 +479,22 @@ async function downloadSong(song) {
 .col-title.sortable, .col-artist.sortable, .col-album.sortable, .col-duration.sortable { cursor: pointer; user-select: none; transition: color 0.15s; }
 .col-title.sortable:hover, .col-artist.sortable:hover, .col-album.sortable:hover, .col-duration.sortable:hover { color: var(--text-primary); }
 .sorted { color: var(--accent) !important; }
+
+.batch-download-bar { padding: 8px 16px; display: flex; justify-content: flex-end; }
+.btn-batch-download {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: var(--radius-md);
+  background: var(--hover-overlay); color: var(--text-secondary);
+  font-size: 13px; cursor: pointer; transition: all .15s;
+}
+.btn-batch-download:hover { background: rgba(255,255,255,0.12); color: var(--text-primary); }
 .sort-arrow { font-size: 10px; margin-left: 2px; }
+
+.btn-mv {
+  opacity: 0; color: var(--text-tertiary);
+  transition: all .15s; padding: 4px; border-radius: var(--radius-sm);
+}
+.btn-mv:hover { color: var(--accent); background: var(--hover-overlay); }
+.song-item:hover .btn-mv { opacity: 1; }
+
 </style>

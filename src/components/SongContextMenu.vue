@@ -42,6 +42,9 @@
         <div class="menu-item" @click="downloadSong">
           <Icon name="download" :size="14" /> 下载
         </div>
+        <div v-if="song?.mv" class="menu-item" @click="router.push(`/mv/${song.mv}`); $emit('close')">
+          <Icon name="video" :size="14" /> 查看 MV
+        </div>
         <div class="menu-item" @click="shareSong">
           <Icon name="plus" :size="14" /> 复制分享链接
         </div>
@@ -225,7 +228,7 @@ async function shareSong() {
 }
 
 .menu-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--hover-overlay);
   color: var(--text-primary);
 }
 

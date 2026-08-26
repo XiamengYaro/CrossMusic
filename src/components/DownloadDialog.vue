@@ -41,6 +41,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useSettingStore } from '@/stores/setting'
 import { getSongUrl } from '@/api/song'
 import Icon from '@/components/icons/Icon.vue'
 
@@ -49,6 +50,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close'])
+const settingStore = useSettingStore()
 
 const QUALITY_LEVELS = ['jymaster', 'hires', 'lossless', 'exhigh', 'higher', 'standard']
 
@@ -121,29 +123,40 @@ async function startDownload() {
     status.value = '正在下载...'
     downloadProgress.value = 50
 
-    const response = await fetch(urlData.url, { signal: abortController.signal })
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    const blob = await response.blob()
-    downloadProgress.value = 90
-
     const ext = getExt(urlData.type)
     const filename = `${safeName(artistName)} - ${safeName(songName)}.${ext}`
-    const blobUrl = URL.createObjectURL(blob)
 
-    const a = document.createElement('a')
-    a.href = blobUrl
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
-
-    downloadProgress.value = 100
-    status.value = '下载完成'
-    statusClass.value = 'status-success'
-    downloading.value = false
-    setTimeout(() => { emit('close') }, 1500)
+    const downloadDir = settingStore.downloadDir
+    if (window.electronAPI?.downloadFile && downloadDir) {
+      // Electron: save directly to configured directory
+      downloadProgress.value = 70
+      status.value = '正在保存到本地...'
+      await window.electronAPI.downloadFile({ url: urlData.url, filename, dir: downloadDir })
+      downloadProgress.value = 100
+      status.value = `已保存到: ${downloadDir}`
+      statusClass.value = 'status-success'
+      downloading.value = false
+      setTimeout(() => { emit('close') }, 2000)
+    } else {
+      // Fallback: browser download
+      const response = await fetch(urlData.url, { signal: abortController.signal })
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const blob = await response.blob()
+      downloadProgress.value = 90
+      const blobUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
+      downloadProgress.value = 100
+      status.value = '下载完成'
+      statusClass.value = 'status-success'
+      downloading.value = false
+      setTimeout(() => { emit('close') }, 1500)
+    }
   } catch (e) {
     if (e.name === 'AbortError') return
     console.error('下载失败:', e)
@@ -160,7 +173,7 @@ async function startDownload() {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(40px) saturate(180%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -169,7 +182,13 @@ async function startDownload() {
 }
 
 .download-modal {
-  background: rgba(44, 44, 44, 0.95);
+  background: rgba(40,40,45,.65);
+  backdrop-filter: blur(60px) saturate(180%);
+  -webkit-backdrop-filter: blur(60px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.08),
+    0 16px 48px rgba(0,0,0,.4);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-radius: var(--radius-xl);
@@ -206,7 +225,7 @@ async function startDownload() {
 }
 
 .close-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--hover-overlay);
   color: var(--text-primary);
 }
 
@@ -237,7 +256,7 @@ async function startDownload() {
 
 .progress-bar {
   height: 4px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--hover-overlay);
   border-radius: 2px;
   overflow: hidden;
   margin-bottom: 4px;

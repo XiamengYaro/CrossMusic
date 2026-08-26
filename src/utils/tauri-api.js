@@ -103,3 +103,16 @@ export async function resetApp() {
     return false
   } catch { return false }
 }
+export async function getSystemMusicDirs() {
+  try {
+    if (window.electronAPI?.getSystemMusicDirs) return await window.electronAPI.getSystemMusicDirs()
+    return []
+  } catch { return [] }
+}
+
+export async function scanMusicDirs(opts) {
+  try {
+    if (window.electronAPI?.scanMusicDirs) return await window.electronAPI.scanMusicDirs(opts)
+    return []
+  } catch { return [] }
+}

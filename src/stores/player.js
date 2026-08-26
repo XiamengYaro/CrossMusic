@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getSongUrl, getSongDetail } from '@/api/song'
+import { getSongUrl, getSongDetail, getLyric } from '@/api/song'
 import { getItem, setItem } from '@/utils/storage'
 
 // 音质等级从高到低排列（移除环绕声和杜比）
@@ -37,6 +37,12 @@ export const usePlayerStore = defineStore('player', () => {
   const duration = ref(0)
   const volume = ref(getItem('volume') ?? 0.7)
   const playMode = ref(getItem('playMode') || 'sequence')
+  const playbackSpeed = ref(parseFloat(getItem('playbackSpeed')) || 1)
+  const abLoopStart = ref(null)
+  const abLoopEnd = ref(null)
+  const abLoopActive = ref(false)
+  const audioOutputDevices = ref([])
+  const selectedOutputDevice = ref(getItem('audioOutputDevice') || '')
   const quality = ref(getItem('quality') || 'exhigh') // 默认音质（设置中）
   const tempQuality = ref('') // 临时音质（下拉栏选择，播放新歌时重置）
   const songUrl = ref('')
@@ -49,6 +55,8 @@ export const usePlayerStore = defineStore('player', () => {
 
   // 睡眠定时器
   const sleepTimerMinutes = ref(0)
+  const menubarLyricLines = []
+  let menubarLyricIndex = -1
   const sleepTimerRemaining = ref(0)
   let sleepTimerInterval = null
   let sleepTimerTimeout = null
@@ -133,8 +141,12 @@ export const usePlayerStore = defineStore('player', () => {
     if (audio.value) return
     audio.value = new Audio()
     audio.value.volume = volume.value
+    audio.value.playbackRate = playbackSpeed.value
     audio.value.addEventListener('timeupdate', () => {
       currentTime.value = audio.value.currentTime * 1000
+      if (abLoopActive.value && abLoopEnd.value !== null && currentTime.value >= abLoopEnd.value) {
+        audio.value.currentTime = (abLoopStart.value || 0) / 1000
+      }
       // 更新 MediaSession positionState
       if ('mediaSession' in navigator && duration.value > 0) {
         navigator.mediaSession.setPositionState({
@@ -143,6 +155,7 @@ export const usePlayerStore = defineStore('player', () => {
           position: audio.value.currentTime
         })
       }
+      tickMenubarLyric()
       // 每 5 秒记录一次播放时长
       const now = Date.now()
       if (lastStatsTime > 0 && now - lastStatsTime >= 5000) {
@@ -154,8 +167,8 @@ export const usePlayerStore = defineStore('player', () => {
     })
     audio.value.addEventListener('loadedmetadata', () => { duration.value = audio.value.duration * 1000 })
     audio.value.addEventListener('ended', () => { onSongEnd() })
-    audio.value.addEventListener('play', () => { isPlaying.value = true })
-    audio.value.addEventListener('pause', () => { isPlaying.value = false })
+    audio.value.addEventListener('play', () => { isPlaying.value = true; if (currentSong.value) updateMenubar(currentSong.value, true) })
+    audio.value.addEventListener('pause', () => { isPlaying.value = false; if (currentSong.value) updateMenubar(currentSong.value, false) })
     audio.value.addEventListener('error', (e) => { console.error('Audio error:', e); loading.value = false })
     initEqualizer()
   }
@@ -264,9 +277,12 @@ export const usePlayerStore = defineStore('player', () => {
       if (url) {
         songUrl.value = url
         audio.value.src = url
+        audio.value.playbackRate = playbackSpeed.value
         await audio.value.play()
         isPlaying.value = true
         updateMediaSession(song)
+        updateMenubar(song, true)
+        fetchMenubarLyric(song.id)
         if (document.hidden) showSongNotification(song)
         recordPlay(song)
         lastStatsTime = Date.now()
@@ -347,6 +363,46 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function setPlayMode(mode) { playMode.value = mode; setItem('playMode', mode) }
+
+  function setPlaybackSpeed(rate) {
+    playbackSpeed.value = rate
+    if (audio.value) audio.value.playbackRate = rate
+    setItem('playbackSpeed', String(rate))
+  }
+
+  function setAbLoopStart() {
+    abLoopStart.value = currentTime.value
+    if (abLoopEnd.value !== null && abLoopStart.value >= abLoopEnd.value) abLoopEnd.value = null
+    abLoopActive.value = abLoopStart.value !== null && abLoopEnd.value !== null
+  }
+
+  function setAbLoopEnd() {
+    abLoopEnd.value = currentTime.value
+    if (abLoopStart.value !== null && abLoopStart.value < abLoopEnd.value) {
+      abLoopActive.value = true
+    }
+  }
+
+  function clearAbLoop() {
+    abLoopStart.value = null
+    abLoopEnd.value = null
+    abLoopActive.value = false
+  }
+
+  async function loadAudioDevices() {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      audioOutputDevices.value = devices.filter(d => d.kind === 'audiooutput')
+    } catch { audioOutputDevices.value = [] }
+  }
+
+  async function setAudioOutput(deviceId) {
+    selectedOutputDevice.value = deviceId
+    setItem('audioOutputDevice', deviceId)
+    if (audio.value && audio.value.setSinkId) {
+      try { await audio.value.setSinkId(deviceId) } catch (e) { console.warn('切换输出设备失败:', e) }
+    }
+  }
   
   // 设置默认音质（设置中）
   async function setQuality(q) {
@@ -406,6 +462,37 @@ export const usePlayerStore = defineStore('player', () => {
         audio.value.currentTime = details.seekTime
       }
     })
+  }
+
+  // 菜单栏状态同步
+  function updateMenubar(song, playing) {
+    if (window.electronAPI?.updateSongState) {
+      const artists = (song.ar || []).map(a => a.name).join(' / ')
+      window.electronAPI.updateSongState({ name: song.name || '', artist: artists, isPlaying: !!playing })
+    }
+  }
+  async function fetchMenubarLyric(songId) {
+    menubarLyricLines.length = 0; menubarLyricIndex = -1
+    try {
+      const res = await getLyric(songId)
+      const lrc = res?.lrc?.lyric || ''
+      const lines = lrc.split('\n').map(line => {
+        const m = line.match(/\[(\d{2}):(\d{2})\.?(\d{0,3})\]\s*(.*)/)
+        if (!m) return null
+        return { time: parseInt(m[1])*60000 + parseInt(m[2])*1000 + parseInt(m[3]||'0'), text: m[4].trim() }
+      }).filter(l => l && l.text)
+      menubarLyricLines.push(...lines)
+    } catch {}
+  }
+  function tickMenubarLyric() {
+    if (!menubarLyricLines.length || !window.electronAPI?.updateSongState) return
+    const t = currentTime.value
+    let idx = -1
+    for (let i = menubarLyricLines.length - 1; i >= 0; i--) { if (t >= menubarLyricLines[i].time) { idx = i; break } }
+    if (idx !== menubarLyricIndex && idx >= 0) {
+      menubarLyricIndex = idx
+      window.electronAPI.updateSongState({ lyric: menubarLyricLines[idx].text })
+    }
   }
 
   // 桌面通知

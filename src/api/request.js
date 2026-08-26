@@ -19,7 +19,7 @@ const request = axios.create({
 request.interceptors.request.use(
   (config) => {
     if (!baseURL) {
-      baseURL = getItem('apiBaseUrl') || ''
+      baseURL = getItem('apiBaseUrl') || 'http://127.0.0.1:3000'
     }
     config.baseURL = baseURL
     // 将数组参数序列化为逗号分隔的字符串（网易云 API 不支持数组格式）

@@ -63,24 +63,6 @@
 
     <!-- Right: Volume & Quality & Playlist -->
     <div class="player-right">
-      <!-- Quality Selector -->
-      <div class="quality-selector">
-        <button class="quality-btn" @click="showQuality = !showQuality">
-          {{ qualityLabel }}
-        </button>
-        <div v-if="showQuality" class="quality-dropdown">
-          <div
-            v-for="q in qualityOptions"
-            :key="q.value"
-            class="quality-option"
-            :class="{ active: playerStore.currentQuality === q.value }"
-            @click="selectQuality(q.value)"
-          >
-            {{ q.label }}
-          </div>
-        </div>
-      </div>
-
       <!-- Volume -->
       <div class="volume-control" ref="volumeControlRef">
         <button class="ctrl-btn vol-btn" @click="toggleMute">
@@ -94,23 +76,55 @@
         </div>
       </div>
 
-      <!-- Sleep Timer -->
-      <div class="sleep-timer" v-if="playerStore.sleepTimerRemaining > 0">
-        <button class="ctrl-btn sleep-btn active" @click="playerStore.clearSleepTimer()" :title="'定时关闭: ' + formatSleepTime(playerStore.sleepTimerRemaining)">
-          <Icon name="clock" :size="16" />
-          <span class="sleep-time">{{ formatSleepTime(playerStore.sleepTimerRemaining) }}</span>
+      <!-- More menu (Quality / Speed / A-B / Sleep) -->
+      <div class="more-menu-wrap">
+        <button v-if="playerStore.sleepTimerRemaining > 0" class="ctrl-btn more-btn active-indicator"
+          @click="showMoreMenu = !showMoreMenu" title="更多">
+          <Icon name="moreHorizontal" :size="16" />
         </button>
-      </div>
-      <div class="sleep-timer" v-else>
-        <button class="ctrl-btn sleep-btn" @click="showSleepMenu = !showSleepMenu" title="定时关闭">
-          <Icon name="clock" :size="16" />
+        <button v-else class="ctrl-btn more-btn" @click="showMoreMenu = !showMoreMenu" title="更多">
+          <Icon name="moreHorizontal" :size="16" />
         </button>
-        <div v-if="showSleepMenu" class="sleep-dropdown">
-          <div v-for="m in [15, 30, 45, 60, 90, 120]" :key="m" class="sleep-option" @click="setSleep(m)">
-            {{ m }} 分钟
+        <Transition name="pop-up">
+          <div v-if="showMoreMenu" class="more-dropdown">
+            <!-- Quality -->
+            <div class="md-section">
+              <span class="md-label">音质</span>
+              <div class="md-options">
+                <button v-for="q in qualityOptions" :key="q.value"
+                  class="md-opt" :class="{ active: playerStore.currentQuality === q.value }"
+                  @click="selectQuality(q.value)">{{ q.label }}</button>
+              </div>
+            </div>
+            <!-- Speed -->
+            <div class="md-section">
+              <span class="md-label">播放速度</span>
+              <div class="md-options">
+                <button v-for="s in [0.5, 0.75, 1, 1.25, 1.5, 2]" :key="s"
+                  class="md-opt" :class="{ active: playerStore.playbackSpeed === s }"
+                  @click="playerStore.setPlaybackSpeed(s)">{{ s }}x</button>
+              </div>
+            </div>
+            <!-- A-B Loop -->
+            <div class="md-section md-row">
+              <span class="md-label">A-B 循环</span>
+              <button class="md-toggle" :class="{ on: playerStore.abLoopActive }" @click="toggleAbLoopFromMenu">
+                <span class="md-toggle-dot"></span>
+              </button>
+              <span v-if="playerStore.abLoopActive" class="md-hint">已设定</span>
+            </div>
+            <!-- Sleep Timer -->
+            <div class="md-section">
+              <span class="md-label">定时关闭</span>
+              <div class="md-options">
+                <button v-for="m in [15, 30, 45, 60]" :key="m"
+                  class="md-opt" :class="{ active: playerStore.sleepTimerMinutes === m }"
+                  @click="setSleep(m); showMoreMenu = false">{{ m }}min</button>
+                <button v-if="playerStore.sleepTimerRemaining > 0" class="md-opt" @click="playerStore.clearSleepTimer(); showMoreMenu = false">关闭</button>
+              </div>
+            </div>
           </div>
-          <div class="sleep-option" @click="playerStore.clearSleepTimer(); showSleepMenu = false">关闭</div>
-        </div>
+        </Transition>
       </div>
 
       <!-- Playlist Toggle -->
@@ -120,8 +134,9 @@
     </div>
 
     <!-- Playlist Drawer -->
-    <div v-if="showPlaylist" class="playlist-drawer-overlay" @click.self="showPlaylist = false">
-      <div class="playlist-drawer">
+    <Transition name="playlist">
+      <div v-if="showPlaylist" class="playlist-drawer-overlay" @click.self="showPlaylist = false">
+        <div class="playlist-drawer">
         <div class="drawer-header">
           <span class="drawer-title">播放列表 ({{ playerStore.playlist.length }})</span>
           <div class="drawer-actions">
@@ -151,8 +166,9 @@
           </div>
           <div v-if="playerStore.playlist.length === 0" class="drawer-empty">暂无歌曲</div>
         </div>
+        </div>
       </div>
-    </div>
+    </Transition>
   </div>
 </template>
 
@@ -176,6 +192,29 @@ const userStore = useUserStore()
 const settingStore = useSettingStore()
 const showQuality = ref(false)
 const showPlaylist = ref(false)
+const showMoreMenu = ref(false)
+
+
+function toggleAbLoopFromMenu() {
+  if (!playerStore.abLoopActive) {
+    if (playerStore.abLoopStart === null) playerStore.setAbLoopStart()
+    else playerStore.setAbLoopEnd()
+  } else {
+    playerStore.clearAbLoop()
+  }
+}
+
+function toggleAbLoop() {
+  if (!playerStore.abLoopActive) {
+    if (playerStore.abLoopStart === null) {
+      playerStore.setAbLoopStart()
+    } else {
+      playerStore.setAbLoopEnd()
+    }
+  } else {
+    playerStore.clearAbLoop()
+  }
+}
 const showSleepMenu = ref(false)
 const prevVolume = ref(0.7)
 
@@ -541,23 +580,25 @@ function onDrop(targetIdx) {
   align-items: center;
   justify-content: center;
   color: var(--text-secondary);
-  transition: all 0.15s;
+  transition: all 0.2s ease;
+  background: rgba(255,255,255,0.06);
 }
 
 .ctrl-btn:hover {
   color: var(--text-primary);
-  background: var(--panel-hover);
+  background: rgba(255,255,255,0.12);
 }
 
 .play-btn {
   width: 38px;
   height: 38px;
   background: var(--accent);
-  color: white !important;
+  border: none;
+  color: white;
 }
-
 .play-btn:hover {
-  background: var(--accent-hover) !important;
+  background: var(--accent-hover);
+  transform: scale(1.05);
 }
 
 .progress-bar {
@@ -632,6 +673,10 @@ function onDrop(targetIdx) {
 .quality-dropdown {
   position: absolute;
   bottom: 36px;
+  background: rgba(40,40,45,.72) !important;
+  
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 8px 32px rgba(0,0,0,.35) !important;
   right: 0;
   background: var(--panel-player-bg);
   backdrop-filter: var(--glass-blur);
@@ -697,6 +742,8 @@ function onDrop(targetIdx) {
 
 .playlist-btn { width: 28px; height: 28px; }
 
+
+
 /* Playlist Drawer */
 .playlist-drawer-overlay {
   position: fixed;
@@ -705,27 +752,38 @@ function onDrop(targetIdx) {
   background: var(--panel-overlay);
   display: flex;
   justify-content: flex-end;
+  align-items: flex-start;
+  padding:
+    calc(var(--titlebar-height) + 10px)
+    12px
+    calc(var(--player-height) + 10px);
 }
 
 .playlist-drawer {
-  width: 360px;
-  height: 100%;
+  width: min(384px, calc(100vw - 24px));
+  height: min(74vh, 720px);
   background: var(--panel-drawer-bg);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  border-left: var(--glass-border);
+  border: var(--glass-border-strong);
   display: flex;
   flex-direction: column;
-  box-shadow: -4px 0 20px var(--panel-overlay);
+  border-radius: 26px;
+  overflow: hidden;
+  transform-origin: right center;
+  box-shadow:
+    0 24px 72px rgba(0, 0, 0, .34),
+    0 8px 24px rgba(0, 0, 0, .18),
+    inset 0 1px 0 rgba(255, 255, 255, .07);
+  will-change: opacity, transform;
 }
 
 .drawer-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 18px 20px;
   border-bottom: 1px solid var(--border-light);
-  padding-top: calc(var(--titlebar-height) + 16px);
 }
 
 .drawer-title {
@@ -747,7 +805,7 @@ function onDrop(targetIdx) {
 .drawer-list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 10px 12px 14px;
   scrollbar-width: thin;
   scrollbar-color: var(--panel-scrollbar) transparent;
 }
@@ -760,16 +818,32 @@ function onDrop(targetIdx) {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
+  min-height: 44px;
+  margin-bottom: 4px;
+  padding: 9px 12px;
+  border-radius: 14px;
   cursor: default;
-  transition: background 0.15s;
+  transition:
+    background-color .22s cubic-bezier(.25, .46, .45, .94),
+    color .2s ease,
+    box-shadow .22s ease,
+    transform .22s cubic-bezier(.25, .46, .45, .94);
   font-size: 13px;
 }
 
-.drawer-item:hover { background: var(--panel-input-bg); }
-.drawer-item.active { color: var(--accent); }
-.drawer-item.drag-over { border-top: 2px solid var(--accent); }
+.drawer-item:hover {
+  background: var(--panel-input-bg);
+  transform: translateY(-1px);
+}
+.drawer-item.active {
+  color: var(--accent);
+  background: var(--accent-light);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+.drawer-item.drag-over {
+  background: var(--accent-light);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 52%, transparent);
+}
 
 .item-idx { width: 24px; text-align: center; color: var(--text-tertiary); font-size: 12px; }
 .playing-icon { color: var(--accent); width: 24px; text-align: center; }
@@ -780,17 +854,88 @@ function onDrop(targetIdx) {
   opacity: 0;
   color: var(--text-tertiary);
   transition: all 0.15s;
-  padding: 2px;
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: transparent;
 }
-.item-remove:hover { color: var(--accent); }
+.item-remove:hover {
+  color: white;
+  background: var(--accent);
+  transform: scale(1.05);
+}
 .drawer-item:hover .item-remove { opacity: 1; }
 .drawer-empty { text-align: center; padding: 40px 0; color: var(--text-tertiary); }
 
-.sleep-timer { position: relative; }
+
 .sleep-btn { width: auto; padding: 0 8px; gap: 4px; display: flex; align-items: center; }
 .sleep-btn.active { color: var(--accent); }
 .sleep-time { font-size: 11px; font-variant-numeric: tabular-nums; }
 .sleep-dropdown { position: absolute; bottom: 36px; right: 0; background: var(--panel-player-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: var(--glass-border); border-radius: var(--radius-md); box-shadow: var(--shadow-md); overflow: hidden; z-index: 100; min-width: 100px; }
 .sleep-option { padding: 8px 16px; font-size: 12px; color: var(--text-secondary); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
 .sleep-option:hover { background: var(--panel-hover); color: var(--text-primary); }
+
+/* More menu */
+.more-menu-wrap { position: relative; }
+.more-btn.active-indicator { color: var(--accent); }
+.more-dropdown {
+  position: absolute; bottom: calc(100% + 12px); right: -8px;
+  background: var(--bg-modal, rgba(30,30,30,.95)); backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid var(--border-color); border-radius: var(--radius-xl);
+  padding: 16px; min-width: 260px; z-index: 200;
+  box-shadow: 0 12px 40px rgba(0,0,0,.35);
+}
+.md-section { margin-bottom: 14px; }
+.md-section:last-child { margin-bottom: 0; }
+.md-row { display: flex; align-items: center; gap: 8px; }
+.md-label { display: block; font-size: 11px; color: var(--text-tertiary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+.md-options { display: flex; flex-wrap: wrap; gap: 4px; }
+.md-opt {
+  padding: 4px 10px; border-radius: var(--radius-sm); cursor: pointer;
+  font-size: 12px; transition: all .15s; background: transparent;
+  color: var(--text-secondary); border: 1px solid transparent;
+}
+.md-opt:hover { background: var(--hover-overlay); }
+.md-opt.active { color: var(--accent); font-weight: 600; border-color: var(--accent-light); background: var(--accent-light); }
+.md-toggle {
+  width: 36px; height: 20px; border-radius: 10px; position: relative;
+  background: var(--bg-tertiary); cursor: pointer; transition: background .2s;
+  border: none;
+}
+.md-toggle.on { background: var(--accent); }
+.md-toggle-dot {
+  position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+  background: white; border-radius: 50%; transition: transform .2s;
+}
+.md-toggle.on .md-toggle-dot { transform: translateX(16px); }
+.md-hint { font-size: 11px; color: var(--text-tertiary); }
+
+.pop-up-enter-active, .pop-up-leave-active { transition: opacity .15s ease, transform .15s ease; }
+.pop-up-enter-from, .pop-up-leave-to { opacity: 0; transform: translateY(8px); }
+
+.playlist-enter-active,
+.playlist-leave-active {
+  transition: opacity .28s cubic-bezier(.33, .01, .22, 1);
+}
+.playlist-enter-active .playlist-drawer {
+  transition: transform .42s cubic-bezier(.19, 1, .22, 1), opacity .28s ease;
+}
+.playlist-leave-active .playlist-drawer {
+  transition: transform .24s cubic-bezier(.55, .06, .68, .19), opacity .2s ease;
+}
+.playlist-enter-from,
+.playlist-leave-to {
+  opacity: 0;
+}
+.playlist-enter-from .playlist-drawer {
+  opacity: 0;
+  transform: translateX(42px) scale(.96);
+}
+.playlist-leave-to .playlist-drawer {
+  opacity: 0;
+  transform: translateX(30px) scale(.98);
+}
+
+
+
 </style>

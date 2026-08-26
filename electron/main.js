@@ -2,10 +2,14 @@ const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, globalShortcut, shell }
 const path = require('path')
 const fs = require('fs')
 const net = require('net')
+const https = require('https')
+const http = require('http')
 let mainWindow
 let tray = null
 let apiServer = null
 let apiPort = 3000
+let currentSongState = { name: '', artist: '', isPlaying: false, lyric: '' }
+let menubarConfig = { showLyric: true, showArtist: true, maxLength: 20 }
 const isMac = process.platform === 'darwin'
 const isWin = process.platform === 'win32'
 const AUDIO_EXTS = ['.mp3', '.flac', '.m4a', '.wav', '.ogg', '.aac', '.wma', '.ape']
@@ -41,16 +45,24 @@ async function startApiServer() {
 }
 
 /** 递归扫描目录中的音频文件 */
-async function scanDirAsync(dir, results = []) {
+async function scanDirAsync(dir, results = [], excluded = []) {
+  const excludedPaths = (excluded || []).map(item => path.resolve(item))
+  const isExcluded = target => {
+    const relative = path.relative(path.resolve(dir), path.resolve(target))
+    return excludedPaths.some(excludedPath => {
+      const relativeToExclude = path.relative(excludedPath, path.resolve(target))
+      return relativeToExclude === '' || (!relativeToExclude.startsWith('..') && !path.isAbsolute(relativeToExclude))
+    })
+  }
   try {
     const entries = await fs.promises.readdir(dir, { withFileTypes: true })
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name)
       if (entry.isDirectory()) {
-        await scanDirAsync(fullPath, results)
+        if (!isExcluded(fullPath)) await scanDirAsync(fullPath, results, excluded)
       } else if (entry.isFile()) {
         const ext = path.extname(entry.name).toLowerCase()
-        if (AUDIO_EXTS.includes(ext)) {
+        if (AUDIO_EXTS.includes(ext) && !isExcluded(fullPath)) {
           const stat = await fs.promises.stat(fullPath)
           results.push({ name: entry.name, path: fullPath, size: stat.size, ext })
         }
@@ -116,6 +128,10 @@ function createWindow() {
   }
 
   mainWindow = new BrowserWindow(windowOptions)
+  mainWindow.webContents.session.setPermissionRequestHandler((_webContents, permission, callback) => {
+    callback(permission === 'local-fonts')
+  })
+  mainWindow.webContents.session.setPermissionCheckHandler((_webContents, permission) => permission === 'local-fonts')
   const distPath = path.join(__dirname, '../dist/index.html')
   mainWindow.loadFile(distPath)
 
@@ -130,17 +146,58 @@ function createWindow() {
   mainWindow.on('closed', () => { mainWindow = null })
 }
 
+function truncate(str, max) {
+  if (!str) return ''
+  return str.length > max ? str.slice(0, max) + '...' : str
+}
+
+function buildTrayMenu() {
+  const { name, artist, isPlaying, lyric } = currentSongState
+  const items = []
+  items.push({ label: isPlaying ? '暂停' : '播放', click: () => { mainWindow?.webContents.send('shortcut', 'play-pause') } })
+  items.push({ label: '上一首', click: () => { mainWindow?.webContents.send('shortcut', 'prev') } })
+  items.push({ label: '下一首', click: () => { mainWindow?.webContents.send('shortcut', 'next') } })
+  if (name) {
+    items.push({ type: 'separator' })
+    const titleLine = menubarConfig.showArtist && artist ? `${truncate(name, menubarConfig.maxLength)} - ${truncate(artist, 12)}` : truncate(name, menubarConfig.maxLength)
+    items.push({ label: titleLine, enabled: false })
+    if (menubarConfig.showLyric && lyric) items.push({ label: truncate(lyric, menubarConfig.maxLength + 12), enabled: false })
+  }
+  items.push({ type: 'separator' })
+  items.push({ label: '显示 CrossMusic', click: () => { if (mainWindow) mainWindow.show() } })
+  items.push({ type: 'separator' })
+  items.push({ label: '退出', click: () => { app.isQuitting = true; app.quit() } })
+  return Menu.buildFromTemplate(items)
+}
+
+function updateTray() {
+  if (!tray) return
+  const { name, artist, isPlaying, lyric } = currentSongState
+  if (name) {
+    const tip = menubarConfig.showArtist && artist ? `${name} - ${artist}` : name
+    tray.setToolTip(tip)
+  } else { tray.setToolTip('CrossMusic') }
+  if (isMac) {
+    if (name) {
+      let title = ''
+      if (menubarConfig.showLyric && lyric) title = truncate(lyric, menubarConfig.maxLength + 10)
+      else if (menubarConfig.showArtist && artist) title = `${truncate(name, 16)} - ${truncate(artist, 10)}`
+      else title = truncate(name, menubarConfig.maxLength)
+      tray.setTitle(title)
+    } else { tray.setTitle('') }
+  }
+  tray.setContextMenu(buildTrayMenu())
+}
+
 function createTray() {
+  try {
   const iconPath = path.join(__dirname, '../build/icon.png')
-  tray = new Tray(iconPath)
-  const contextMenu = Menu.buildFromTemplate([
-    { label: '显示 CrossMusic', click: () => { if (mainWindow) mainWindow.show() } },
-    { type: 'separator' },
-    { label: '退出', click: () => { app.isQuitting = true; app.quit() } },
-  ])
+  if (!fs.existsSync(iconPath)) { console.warn("[Tray] icon not found:", iconPath); return; }
+    tray = new Tray(iconPath)
   tray.setToolTip('CrossMusic')
-  tray.setContextMenu(contextMenu)
-  tray.on('double-click', () => { if (mainWindow) mainWindow.show() })
+  tray.setContextMenu(buildTrayMenu())
+    tray.on("double-click", () => { if (mainWindow) mainWindow.show() })
+  } catch (e) { console.warn("[Tray] create failed:", e.message) }
 }
 
 function registerShortcuts(customShortcuts) {
@@ -202,8 +259,56 @@ app.on('activate', async () => {
   }
 })
 
+ipcMain.handle('download-file', async (_event, { url, filename, dir }) => {
+  return new Promise((resolve, reject) => {
+    if (!url) return reject(new Error('No URL'))
+    const savePath = path.join(dir, filename)
+    const proto = url.startsWith('https') ? https : http
+    const request = proto.get(url, (response) => {
+      // Follow redirects
+      if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+        const redirect = proto.get(response.headers.location, (res2) => {
+          const fileStream = fs.createWriteStream(savePath)
+          res2.pipe(fileStream)
+          fileStream.on('finish', () => { fileStream.close(); resolve(savePath) })
+          fileStream.on('error', (e) => { fs.unlink(savePath, () => {}); reject(e) })
+        })
+        redirect.on('error', reject)
+        return
+      }
+      const fileStream = fs.createWriteStream(savePath)
+      response.pipe(fileStream)
+      fileStream.on('finish', () => { fileStream.close(); resolve(savePath) })
+      fileStream.on('error', (e) => { fs.unlink(savePath, () => {}); reject(e) })
+    })
+    request.on('error', reject)
+    request.setTimeout(60000, () => { request.destroy(); reject(new Error('Download timeout')) })
+  })
+})
+
+ipcMain.on('update-song-state', (_event, state) => {
+  currentSongState = { ...currentSongState, ...state }
+  updateTray()
+})
+
+ipcMain.on('update-menubar-config', (_event, config) => {
+  menubarConfig = { ...menubarConfig, ...config }
+  updateTray()
+})
+
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
+})
+
+// Global error handlers
+process.on('uncaughtException', (err) => {
+  console.error('[Uncaught Exception]', err.message, err.stack)
+  writeLog('error', `Uncaught: ${err.message}`)
+})
+process.on('unhandledRejection', (reason) => {
+  const msg = typeof reason === 'object' ? reason?.message || JSON.stringify(reason) : String(reason)
+  console.error('[Unhandled Rejection]', msg)
+  writeLog('error', `Rejection: ${msg}`)
 })
 
 // --- IPC Handlers ---
@@ -225,10 +330,11 @@ ipcMain.handle('check-api-status', () => {
 
 ipcMain.handle('start-api-server', async (_event, port) => {
   if (port) {
-    if (!Number.isInteger(port) || port < 1024 || port > 65535) {
+    const numPort = Number(port)
+    if (!Number.isInteger(numPort) || numPort < 1024 || numPort > 65535) {
       return `无效端口: ${port}，有效范围 1024-65535`
     }
-    apiPort = port
+    apiPort = numPort
   }
   if (apiServer) return `API 服务已在端口 ${apiPort} 运行中`
   try {
@@ -249,6 +355,32 @@ ipcMain.handle('select-directory', async () => {
   const result = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'], title: '选择音乐目录' })
   if (result.canceled || result.filePaths.length === 0) return null
   return result.filePaths[0]
+})
+
+ipcMain.handle('get-system-music-dirs', () => {
+  const dirs = []
+  try { dirs.push(app.getPath('music')) } catch {}
+  try { dirs.push(app.getPath('downloads')) } catch {}
+  return [...new Set(dirs)].filter(Boolean)
+})
+
+ipcMain.handle('scan-music-dirs', async (_event, { includeDirs, excludeDirs }) => {
+  const results = []
+  for (const dir of (includeDirs || [])) {
+    try {
+      await fs.promises.access(dir)
+    } catch { continue }
+    const resolvedDir = path.resolve(dir)
+    if ((excludeDirs || []).some(ex => {
+      const relative = path.relative(path.resolve(ex), resolvedDir)
+      return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
+    })) continue
+    const files = await scanDirAsync(dir, [], excludeDirs || [])
+    for (const f of files) {
+      results.push(f)
+    }
+  }
+  return results
 })
 
 ipcMain.handle('get-music-dir', () => {
