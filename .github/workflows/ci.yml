@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - "optimize/**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --omit=dev --ignore-scripts
+      - name: Build renderer
+        run: npm run build
+      - name: Install API dependencies
+        run: npm ci --omit=dev --ignore-scripts
+        working-directory: server
+      - name: Check API JavaScript syntax
+        run: |
+          find module util plugins server.js generateConfig.js -type f -name '*.js' -print0 |
+            xargs -0 -n 40 node --check
+        working-directory: server
+
+  package:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+    needs: quality
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            args: --mac
+          - os: windows-latest
+            args: --win
+          - os: ubuntu-latest
+            args: --linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Install API production dependencies
+        run: npm ci --ignore-scripts
+        working-directory: server
+      - name: Build renderer
+        run: npm run build
+      - name: Package desktop application
+        run: npx electron-builder --dir ${{ matrix.args }}
