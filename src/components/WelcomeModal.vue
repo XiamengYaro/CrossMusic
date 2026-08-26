@@ -483,7 +483,7 @@ async function handleLoginSuccess(cookie) {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(40px) saturate(180%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -492,7 +492,7 @@ async function handleLoginSuccess(cookie) {
 }
 
 .modal-container {
-  background: rgba(44, 44, 44, 0.65);
+  background: var(--bg-modal);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-radius: var(--radius-xl);
@@ -566,7 +566,7 @@ async function handleLoginSuccess(cookie) {
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  background: rgba(58, 58, 58, 0.4);
+  background: var(--bg-input);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -574,7 +574,7 @@ async function handleLoginSuccess(cookie) {
 }
 
 .api-option:hover {
-  background: rgba(58, 58, 58, 0.6);
+  background: var(--bg-input);
   border-color: rgba(255, 255, 255, 0.12);
 }
 
@@ -621,7 +621,7 @@ async function handleLoginSuccess(cookie) {
 .input-field {
   width: 100%;
   padding: 12px 16px;
-  background: rgba(58, 58, 58, 0.6);
+  background: var(--bg-input);
   backdrop-filter: blur(10px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -662,7 +662,7 @@ async function handleLoginSuccess(cookie) {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(58, 58, 58, 0.6);
+  background: var(--bg-input);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   color: var(--text-secondary);
@@ -671,7 +671,7 @@ async function handleLoginSuccess(cookie) {
 }
 
 .btn-browse:hover {
-  background: rgba(58, 58, 58, 0.9);
+  background: var(--bg-input);
   color: var(--text-primary);
   border-color: rgba(255, 255, 255, 0.12);
 }
@@ -855,7 +855,7 @@ async function handleLoginSuccess(cookie) {
 
 .btn-send-captcha {
   padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--hover-overlay);
   color: var(--accent);
   border-radius: var(--radius-md);
   font-size: 13px;
@@ -881,7 +881,7 @@ async function handleLoginSuccess(cookie) {
 
 .btn-ghost {
   padding: 8px 24px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--hover-overlay);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: 13px;
@@ -890,7 +890,7 @@ async function handleLoginSuccess(cookie) {
 }
 
 .btn-ghost:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--hover-overlay);
   color: var(--text-primary);
 }
 

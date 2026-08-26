@@ -60,5 +60,5 @@ onMounted(() => loadAlbums())
 .album-name { font-size: 13px; font-weight: 500; margin-top: 8px; }
 .album-artist { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 .load-more { text-align: center; padding: 20px 0; }
-.btn-text { padding: 8px 24px; border-radius: var(--radius-md); font-size: 13px; color: var(--text-secondary); background: rgba(255,255,255,0.06); }
+.btn-text { padding: 8px 24px; border-radius: var(--radius-md); font-size: 13px; color: var(--text-secondary); background: var(--hover-overlay); }
 </style>

@@ -26,51 +26,25 @@
         </div>
         <div class="panel-body">
           <div class="panel-section">
+            <div class="section-title">文字与字体</div>
             <div class="panel-row">
               <label class="setting-label">字号</label>
-              <input type="range" class="range-input" :min="18" :max="40"
+              <input type="range" class="range-input" min="24" max="72"
                 :value="settingStore.lyricFontSize"
                 @input="settingStore.setLyricSetting('lyricFontSize', Number($event.target.value))" />
               <span class="range-val">{{ settingStore.lyricFontSize }}</span>
             </div>
             <div class="panel-row">
-              <label class="setting-label">高亮</label>
-              <input type="range" class="range-input" :min="22" :max="52"
-                :value="settingStore.lyricActiveFontSize"
-                @input="settingStore.setLyricSetting('lyricActiveFontSize', Number($event.target.value))" />
-              <span class="range-val">{{ settingStore.lyricActiveFontSize }}</span>
+              <label class="setting-label">字重</label>
+              <select class="select-input" :value="settingStore.lyricFontWeight"
+                @change="settingStore.setLyricSetting('lyricFontWeight', Number($event.target.value))">
+                <option :value="400">常规</option>
+                <option :value="500">中等</option>
+                <option :value="600">半粗</option>
+                <option :value="700">粗体</option>
+                <option :value="800">重粗</option>
+              </select>
             </div>
-            <div class="panel-row">
-              <label class="setting-label">行距</label>
-              <input type="range" class="range-input" :min="1" :max="3" :step="0.1"
-                :value="settingStore.lyricLineHeight"
-                @input="settingStore.setLyricSetting('lyricLineHeight', Number($event.target.value))" />
-              <span class="range-val">{{ settingStore.lyricLineHeight }}</span>
-            </div>
-            <div class="panel-row">
-              <label class="setting-label">偏移</label>
-              <input type="range" class="range-input" :min="-200" :max="200"
-                :value="settingStore.lyricVerticalOffset"
-                @input="settingStore.setLyricSetting('lyricVerticalOffset', Number($event.target.value))" />
-              <span class="range-val">{{ settingStore.lyricVerticalOffset }}px</span>
-            </div>
-            <div class="panel-row">
-              <label class="setting-label">译文</label>
-              <input type="range" class="range-input" :min="10" :max="24"
-                :value="settingStore.lyricTransFontSize"
-                @input="settingStore.setLyricSetting('lyricTransFontSize', Number($event.target.value))" />
-              <span class="range-val">{{ settingStore.lyricTransFontSize }}</span>
-            </div>
-            <div class="panel-row">
-              <label class="setting-label">偏移</label>
-              <input type="range" class="range-input" :min="-3" :max="3" :step="0.1"
-                :value="lyricOffset"
-                @input="lyricOffset = Number($event.target.value)" />
-              <span class="range-val">{{ lyricOffset.toFixed(1) }}s</span>
-            </div>
-          </div>
-
-          <div class="panel-section">
             <div class="panel-row">
               <label class="setting-label">颜色</label>
               <div class="color-options">
@@ -79,24 +53,45 @@
                   :class="{ active: settingStore.lyricColor === c.value }"
                   @click.stop="settingStore.setLyricSetting('lyricColor', c.value)"></button>
               </div>
+              <input type="color" class="color-picker" :value="pickerColor"
+                @click.stop @input="settingStore.setLyricSetting('lyricColor', $event.target.value)" />
             </div>
             <div class="panel-row">
               <label class="setting-label">字体</label>
               <select class="select-input" :value="settingStore.lyricFontFamily"
-                @change="settingStore.setLyricSetting('lyricFontFamily', $event.target.value)">
-                <option v-for="f in settingStore.lyricFontFamilies" :key="f.value" :value="f.value">{{ f.label }}</option>
+                @change="setCustomFontFamily($event)">
+                <option value="system">系统默认</option>
+                <option v-for="font in presetFonts" :key="'preset-' + font" :value="font">{{ font }}</option>
+                <option v-for="font in systemFonts" :key="'system-' + font" :value="font">{{ font }}</option>
               </select>
+              <button class="mini-btn" :disabled="systemFontLoading" @click.stop="loadSystemFonts">
+                {{ systemFontLoading ? '扫描中' : '扫描' }}
+              </button>
             </div>
             <div class="panel-row">
-              <label class="setting-label">已唱</label>
-              <input type="range" class="range-input" :min="0.05" :max="0.8" :step="0.05"
-                :value="settingStore.lyricPassedOpacity"
-                @input="settingStore.setLyricSetting('lyricPassedOpacity', Number($event.target.value))" />
-              <span class="range-val">{{ Math.round(settingStore.lyricPassedOpacity * 100) }}%</span>
+              <label class="setting-label">自定义</label>
+              <input class="text-input" type="text" placeholder="输入字体名称或 CSS 字体栈"
+                :value="settingStore.lyricFontFamily === 'system' ? '' : settingStore.lyricFontFamily"
+                @change="setCustomFontFamily($event)" />
             </div>
           </div>
 
           <div class="panel-section">
+            <div class="section-title">内容与布局</div>
+            <div class="panel-row">
+              <label class="setting-label">位置</label>
+              <input type="range" class="range-input" min="-200" max="200"
+                :value="settingStore.lyricVerticalOffset"
+                @input="settingStore.setLyricSetting('lyricVerticalOffset', Number($event.target.value))" />
+              <span class="range-val">{{ settingStore.lyricVerticalOffset }}px</span>
+            </div>
+            <div class="panel-row">
+              <label class="setting-label">时间</label>
+              <input type="range" class="range-input" min="-3" max="3" step="0.1"
+                :value="lyricOffset"
+                @input="lyricOffset = Number($event.target.value)" />
+              <span class="range-val">{{ lyricOffset.toFixed(1) }}s</span>
+            </div>
             <div class="panel-row between">
               <label class="setting-label">翻译</label>
               <label class="toggle-switch" @click.stop>
@@ -106,6 +101,18 @@
               </label>
             </div>
             <div class="panel-row between">
+              <label class="setting-label">隐藏已唱</label>
+              <label class="toggle-switch" @click.stop>
+                <input type="checkbox" :checked="settingStore.lyricHidePassedLines"
+                  @change="settingStore.setLyricSetting('lyricHidePassedLines', $event.target.checked)" />
+                <span class="toggle-track"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="panel-section">
+            <div class="section-title">动效</div>
+            <div class="panel-row between">
               <label class="setting-label">高亮放大</label>
               <label class="toggle-switch" @click.stop>
                 <input type="checkbox" :checked="settingStore.lyricActiveScale"
@@ -114,29 +121,53 @@
               </label>
             </div>
             <div class="panel-row between">
-              <label class="setting-label">模糊背景</label>
+              <label class="setting-label">文字模糊</label>
               <label class="toggle-switch" @click.stop>
-                <input type="checkbox" :checked="settingStore.lyricShowBlurBg"
-                  @change="settingStore.setLyricSetting('lyricShowBlurBg', $event.target.checked)" />
+                <input type="checkbox" :checked="settingStore.lyricEnableBlur"
+                  @change="settingStore.setLyricSetting('lyricEnableBlur', $event.target.checked)" />
                 <span class="toggle-track"></span>
               </label>
             </div>
-            <div class="panel-row" v-if="settingStore.lyricShowBlurBg">
-              <label class="setting-label">模糊</label>
-              <input type="range" class="range-input" :min="10" :max="120"
-                :value="settingStore.lyricBlurAmount"
-                @input="settingStore.setLyricSetting('lyricBlurAmount', Number($event.target.value))" />
-              <span class="range-val">{{ settingStore.lyricBlurAmount }}</span>
+            <div class="panel-row between">
+              <label class="setting-label">弹簧动效</label>
+              <label class="toggle-switch" @click.stop>
+                <input type="checkbox" :checked="settingStore.lyricEnableSpring"
+                  @change="settingStore.setLyricSetting('lyricEnableSpring', $event.target.checked)" />
+                <span class="toggle-track"></span>
+              </label>
+            </div>
+            <div class="panel-row">
+              <label class="setting-label">渐变宽</label>
+              <input type="range" class="range-input" min="0" max="1.5" step="0.05"
+                :value="settingStore.lyricWordFadeWidth"
+                @input="settingStore.setLyricSetting('lyricWordFadeWidth', Number($event.target.value))" />
+              <span class="range-val">{{ settingStore.lyricWordFadeWidth.toFixed(2) }}</span>
             </div>
           </div>
 
           <div class="panel-section">
-            <div class="panel-row">
-              <label class="setting-label">暗度</label>
-              <input type="range" class="range-input" :min="0" :max="1" :step="0.05"
-                :value="settingStore.lyricBgOpacity"
-                @input="settingStore.setLyricSetting('lyricBgOpacity', Number($event.target.value))" />
-              <span class="range-val">{{ Math.round(settingStore.lyricBgOpacity * 100) }}%</span>
+            <div class="section-title">背景流光</div>
+            <div class="panel-row between">
+              <label class="setting-label">流光</label>
+              <label class="toggle-switch" @click.stop>
+                <input type="checkbox" :checked="settingStore.lyricAmbientEnabled"
+                  @change="settingStore.setLyricSetting('lyricAmbientEnabled', $event.target.checked)" />
+                <span class="toggle-track"></span>
+              </label>
+            </div>
+            <div class="panel-row" v-if="settingStore.lyricAmbientEnabled">
+              <label class="setting-label">强度</label>
+              <input type="range" class="range-input" min="0" max="2" step="0.05"
+                :value="settingStore.lyricAmbientIntensity"
+                @input="settingStore.setLyricSetting('lyricAmbientIntensity', Number($event.target.value))" />
+              <span class="range-val">{{ Math.round(settingStore.lyricAmbientIntensity * 100) }}%</span>
+            </div>
+            <div class="panel-row" v-if="settingStore.lyricAmbientEnabled">
+              <label class="setting-label">速度</label>
+              <input type="range" class="range-input" min="0.25" max="2.5" step="0.05"
+                :value="settingStore.lyricAmbientSpeed"
+                @input="settingStore.setLyricSetting('lyricAmbientSpeed', Number($event.target.value))" />
+              <span class="range-val">{{ settingStore.lyricAmbientSpeed.toFixed(2) }}x</span>
             </div>
           </div>
         </div>
@@ -145,15 +176,31 @@
     </div>
 
     <!-- Background -->
-    <div class="lyric-bg">
-      <img v-if="currentSong?.al?.picUrl"
-        :src="currentSong.al.picUrl + '?param=400y400'"
-        class="lyric-bg-img"
-        :style="{ filter: settingStore.lyricShowBlurBg
-          ? `blur(${settingStore.lyricBlurAmount}px) brightness(${0.4 + (1 - settingStore.lyricBgOpacity) * 0.3}) saturate(1.5)`
-          : `brightness(${0.2 + (1 - settingStore.lyricBgOpacity) * 0.5})` }" />
-      <div v-else class="lyric-bg-default"></div>
-      <div class="lyric-bg-overlay" :style="{ opacity: settingStore.lyricShowBlurBg ? 0 : 1 }"></div>
+    <div class="lyric-bg" :class="{
+      'ambient-disabled': !settingStore.lyricAmbientEnabled,
+      'amll-ready': settingStore.lyricAmbientEnabled && amllReady,
+    }"
+      :style="{
+        ...ambientStyle,
+        '--ambient-opacity': settingStore.lyricAmbientIntensity,
+        '--ambient-speed': settingStore.lyricAmbientSpeed,
+      }">
+      <div ref="amllHost" class="amll-host"></div>
+      <div class="amll-shade"></div>
+      <Transition name="ambient-crossfade">
+        <div class="ambient-scene" :key="currentSong?.id || 'default'">
+          <img v-if="currentSong?.al?.picUrl"
+            :src="currentSong.al.picUrl + '?param=300y300'"
+            class="lyric-bg-img"
+            :style="{ filter: 'blur(64px) brightness(.52) saturate(1.5)' }" />
+          <div v-else class="lyric-bg-default"></div>
+          <div class="lyric-bg-overlay" style="opacity: 0"></div>
+          <div class="ambient-glow-container">
+            <div class="ambient-flow ambient-flow-base"></div>
+            <div class="ambient-flow ambient-flow-highlight"></div>
+          </div>
+        </div>
+      </Transition>
     </div>
 
     <!-- Main Content -->
@@ -201,33 +248,13 @@
       </div>
 
       <!-- Right: Lyrics -->
-      <div class="lyric-scroll-area" ref="lyricContainer" :style="{
-        lineHeight: settingStore.lyricLineHeight,
-        '--lyric-font-size': settingStore.lyricFontSize + 'px',
-        '--lyric-active-font-size': settingStore.lyricActiveFontSize + 'px',
-        '--lyric-color': settingStore.lyricColor === 'white' ? 'white' : settingStore.lyricColor,
-        '--lyric-font-family': getFontFamily(),
-        '--lyric-trans-font-size': settingStore.lyricTransFontSize + 'px',
-        '--lyric-passed-opacity': settingStore.lyricPassedOpacity,
-        '--lyric-vertical-offset': settingStore.lyricVerticalOffset + 'px',
-      }">
-        <div class="lyric-padding-top"></div>
-        <div v-for="(line, idx) in lyricLines" :key="idx"
-          class="lyric-line"
-          :class="{ active: idx === activeLineIndex, passed: idx < activeLineIndex, 'no-scale': !settingStore.lyricActiveScale }"
-          @click="seekToLine(idx)">
-          <div class="lyric-text" v-if="line.words && line.words.length && idx === activeLineIndex">
-            <span v-for="(w, wi) in line.words" :key="wi"
-              class="lyric-word"
-              :class="{ 'word-passed': playerStore.currentTime >= w.startTime + w.duration }">{{ w.text }}</span>
-          </div>
-          <div v-else class="lyric-text">{{ line.mainLyric || '···' }}</div>
-          <div v-if="line.translatedLyric && settingStore.lyricShowTranslation" class="lyric-trans">
-            {{ line.translatedLyric }}
-          </div>
-        </div>
-        <div class="lyric-padding-bottom"></div>
-      </div>
+      <div class="amll-lyric-host" ref="amllLyricHost"
+        :style="{
+          '--amll-lp-font-size': settingStore.lyricFontSize + 'px',
+          '--amll-lp-color': settingStore.lyricColor === 'white' ? 'white' : settingStore.lyricColor,
+          fontFamily: getFontFamily(),
+          fontWeight: settingStore.lyricFontWeight,
+        }" />
     </div>
   </div>
 </template>
@@ -236,11 +263,13 @@
 import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlayerStore } from '@/stores/player'
+import { getAmbientGlow } from '@/utils/ambient'
 import { useSettingStore } from '@/stores/setting'
 import { useUserStore } from '@/stores/user'
 import { getLyricNew, getLikelist, likeSong } from '@/api/song'
 import { formatTime } from '@/utils/format'
 import { getItem, setItem } from '@/utils/storage'
+import { showToast } from '@/utils/toast'
 import Icon from '@/components/icons/Icon.vue'
 
 const props = defineProps({ visible: { type: Boolean, default: false } })
@@ -250,14 +279,236 @@ const router = useRouter()
 const playerStore = usePlayerStore()
 const settingStore = useSettingStore()
 const userStore = useUserStore()
-const lyricContainer = ref(null)
+const amllHost = ref(null)
+const amllLyricHost = ref(null)
+const ambientStyle = ref({})
+const currentSong = computed(() => playerStore.currentSong)
+const amllReady = ref(false)
+const systemFonts = ref([])
+const systemFontLoading = ref(false)
+
+const presetFonts = ['PingFang SC', 'Hiragino Sans GB', 'Songti SC', 'Yuanti SC', 'SF Pro', 'Helvetica Neue', 'Menlo']
+const pickerColor = computed(() => {
+  if (/^#([0-9a-f]{6})$/i.test(settingStore.lyricColor)) return settingStore.lyricColor
+  if (settingStore.lyricColor === 'white') return '#ffffff'
+  return '#ffffff'
+})
+
+let amllRenderer = null
+let amllAlbumKey = ''
+let amllModulePromise = null
+let amllPlayer = null
+let amllLastFrameTime = 0
+
+async function loadAmllModule() {
+  if (!amllModulePromise) {
+    amllModulePromise = Promise.all([
+      import('@applemusic-like-lyrics/core'),
+      import('@applemusic-like-lyrics/core/style.css'),
+    ]).then(([core]) => core)
+  }
+  return amllModulePromise
+}
+
+function getAlbumSource() {
+  const url = playerStore.currentSong?.al?.picUrl
+  return url ? url + '?param=512y512' : ''
+}
+
+function applyAmllSettings() {
+  if (amllRenderer) {
+    amllRenderer.setFPS(60)
+    amllRenderer.setRenderScale(1)
+    amllRenderer.setFlowSpeed(settingStore.lyricAmbientSpeed * 0.2)
+    amllRenderer.getElement().style.opacity = String(
+      settingStore.lyricAmbientEnabled ? Math.min(1, settingStore.lyricAmbientIntensity * 0.86) : 0
+    )
+    if (settingStore.lyricAmbientEnabled && props.visible) amllRenderer.resume()
+    else amllRenderer.pause()
+  }
+  if (amllPlayer) {
+    amllPlayer.setEnableBlur(settingStore.lyricEnableBlur)
+    amllPlayer.setEnableScale(settingStore.lyricActiveScale)
+    amllPlayer.setEnableSpring(settingStore.lyricEnableSpring)
+    amllPlayer.setHidePassedLines(settingStore.lyricHidePassedLines)
+    amllPlayer.setWordFadeWidth(settingStore.lyricWordFadeWidth)
+    amllPlayer.setAlignPosition(Math.max(.12, Math.min(.72, .35 - settingStore.lyricVerticalOffset / 1000)))
+  }
+}
+
+async function loadSystemFonts() {
+  if (!('queryLocalFonts' in window)) {
+    showToast('当前环境不支持扫描系统字体，可手动输入字体名称', 'warning')
+    return
+  }
+  systemFontLoading.value = true
+  try {
+    const fonts = await window.queryLocalFonts()
+    systemFonts.value = Array.from(new Set(fonts.map(font => font.family)))
+      .sort((a, b) => a.localeCompare(b, 'zh-Hans'))
+    showToast(`已加载 ${systemFonts.value.length} 个系统字体族`, 'success')
+  } catch (error) {
+    console.warn('读取系统字体失败:', error)
+    showToast('读取系统字体失败，可手动输入字体名称', 'error')
+  } finally {
+    systemFontLoading.value = false
+  }
+}
+
+function setCustomFontFamily(event) {
+  const value = String(event.target.value || '').trim()
+  settingStore.setLyricSetting('lyricFontFamily', value || 'system')
+}
+
+async function updateAmllAlbum() {
+  if (!amllRenderer) return
+  const source = getAlbumSource()
+  const key = source || 'default'
+  if (key === amllAlbumKey) return
+  amllAlbumKey = key
+  if (!source) return
+  try {
+    await amllRenderer.setAlbum(source)
+    amllReady.value = true
+  } catch (error) {
+    console.warn('AMLL 背景加载失败:', error)
+  }
+}
+
+async function setupAmll() {
+  try {
+    if (!props.visible) return
+    const core = await loadAmllModule()
+    if (!amllRenderer && settingStore.lyricAmbientEnabled && amllHost.value) {
+      const { BackgroundRender, MeshGradientRenderer } = core
+      amllRenderer = BackgroundRender.new(MeshGradientRenderer)
+      const element = amllRenderer.getElement()
+      element.className = 'amll-canvas'
+      Object.assign(element.style, {
+        position: 'absolute', inset: '0', width: '100%', height: '100%',
+        zIndex: '0', opacity: '0', pointerEvents: 'none',
+      })
+      amllHost.value.appendChild(element)
+      amllRenderer.setHasLyric(true)
+    }
+    if (!amllPlayer && amllLyricHost.value) {
+      const { LyricPlayer } = core
+      amllPlayer = new LyricPlayer()
+      amllPlayer.addEventListener('line-click', onAmllLineClick)
+      amllLyricHost.value.appendChild(amllPlayer.getElement())
+    }
+    applyAmllSettings()
+    await updateAmllAlbum()
+    updateAmllLyrics(true)
+  } catch (error) {
+    console.warn('AMLL 背景初始化失败:', error)
+    disposeAmll()
+  }
+}
+
+function startAmllLoop() {
+  if (!rafId) {
+    amllLastFrameTime = performance.now()
+    rafId = requestAnimationFrame(tickAmll)
+  }
+}
+
+function tickAmll(now) {
+  if (!props.visible) {
+    rafId = null
+    return
+  }
+  if (amllPlayer) {
+    const delta = Math.max(0, now - amllLastFrameTime)
+    const time = getCurrentPlaybackTime()
+    amllPlayer.setCurrentTime(time)
+    if (playerStore.isPlaying) amllPlayer.resume()
+    else amllPlayer.pause()
+    amllPlayer.update(delta)
+  }
+  amllLastFrameTime = now
+  rafId = requestAnimationFrame(tickAmll)
+}
+
+function stopAmllLoop() {
+  if (rafId) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
+}
+
+function toAmllLine(line) {
+  const words = line.words?.length
+    ? line.words.map(word => ({
+      startTime: word.startTime,
+      endTime: word.startTime + (word.duration || 0),
+      word: word.text,
+    }))
+    : [{
+      startTime: line.startTime,
+      endTime: line.endTime,
+      word: line.mainLyric,
+    }]
+  return {
+    words,
+    translatedLyric: settingStore.lyricShowTranslation ? (line.translatedLyric || '') : '',
+    romanLyric: '',
+    startTime: line.startTime,
+    endTime: line.endTime,
+    isBG: false,
+    isDuet: false,
+  }
+}
+
+function updateAmllLyrics(initial = false) {
+  if (!amllPlayer) return
+  const time = getCurrentPlaybackTime()
+  amllPlayer.setLyricLines(lyricLines.value.map(toAmllLine), time)
+  amllPlayer.setCurrentTime(time, true)
+  if (initial) amllPlayer.update(0)
+}
+
+function getCurrentPlaybackTime() {
+  const audio = playerStore.audio
+  const seconds = audio?.currentTime ?? playerStore.currentTime / 1000
+  return Math.max(0, seconds * 1000 - lyricOffset.value * 1000)
+}
+
+function onAmllLineClick(event) {
+  const line = lyricLines.value[event.lineIndex]
+  if (!line || !playerStore.duration) return
+  playerStore.seekTo(Math.max(0, Math.min(100, line.startTime / playerStore.duration * 100)))
+}
+
+function disposeAmll() {
+  amllAlbumKey = ''
+  amllReady.value = false
+  if (amllRenderer) {
+    amllRenderer.dispose()
+    amllRenderer = null
+  }
+  if (amllPlayer) {
+    amllPlayer.removeEventListener('line-click', onAmllLineClick)
+    amllPlayer.dispose()
+    amllPlayer = null
+  }
+}
+
+watch(() => playerStore.currentSong?.al?.picUrl, async (url) => {
+  if (url) {
+    const glow = await getAmbientGlow(url + '?param=100y100')
+    ambientStyle.value = glow || {}
+    updateAmllAlbum()
+  } else {
+    ambientStyle.value = {}
+    updateAmllAlbum()
+  }
+}, { immediate: true })
 
 const showSettings = ref(false)
 const lyricOffset = ref(0)
 const lyricLines = ref([])
-const activeLineIndex = ref(-1)
 let rafId = null
-let cachedLineEls = []
 
 const likedSet = ref(new Set(getItem('likedIds') || []))
 const isLiked = computed(() => currentSong.value ? likedSet.value.has(currentSong.value.id) : false)
@@ -296,43 +547,6 @@ const songDetailText = computed(() => {
   return parts.join(' · ')
 })
 
-// 提取歌词匹配逻辑为独立函数
-function findActiveLine(time, lines) {
-  if (!lines.length) return -1
-  // 精确匹配：当前时间在 [startTime, endTime) 区间内
-  for (let i = 0; i < lines.length; i++) {
-    if (time >= lines[i].startTime && time < lines[i].endTime) return i
-  }
-  // 退而求其次：找到最后一条 startTime <= 当前时间的歌词
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (time >= lines[i].startTime) return i
-  }
-  return -1
-}
-
-// 使用 requestAnimationFrame 持续检测当前歌词行，避免 watch 丢失更新
-function startHighlightLoop() {
-  function tick() {
-    if (!props.visible) { rafId = null; return }
-    const ls = lyricLines.value
-    if (ls.length) {
-      const time = playerStore.currentTime - lyricOffset.value * 1000
-      const n = findActiveLine(time, ls)
-      if (n !== activeLineIndex.value) {
-        activeLineIndex.value = n
-        scrollToActive()
-      }
-    }
-    rafId = requestAnimationFrame(tick)
-  }
-  if (!rafId) rafId = requestAnimationFrame(tick)
-}
-
-function stopHighlightLoop() {
-  if (rafId) { cancelAnimationFrame(rafId); rafId = null }
-}
-
-const currentSong = computed(() => playerStore.currentSong)
 const isPlaying = computed(() => playerStore.isPlaying)
 const currentTime = computed(() => playerStore.currentTime)
 const duration = computed(() => playerStore.duration)
@@ -372,20 +586,15 @@ function toggleSettings() {
 }
 
 function getFontFamily() {
-  const v = settingStore.lyricFontFamily
-  return v === 'system' ? 'inherit' : v
+  const value = settingStore.lyricFontFamily
+  if (value === 'system') return 'inherit'
+  if (value.includes(',') || value.includes('"') || value.includes("'")) return value
+  return `"${value.replaceAll('"', '')}", -apple-system, "PingFang SC", "Hiragino Sans GB", sans-serif`
 }
 
 function seekLyric(e) {
   const rect = e.currentTarget.getBoundingClientRect()
   playerStore.seekTo(Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100)))
-}
-
-function seekToLine(idx) {
-  const line = lyricLines.value[idx]
-  if (line && line.startTime >= 0) {
-    playerStore.seekTo(Math.max(0, Math.min(100, (line.startTime / duration.value) * 100)))
-  }
 }
 
 function parseLrc(str) {
@@ -475,36 +684,50 @@ async function loadLyrics() {
     const trans = new Map(parseLrc(tl).map(t => [t.startTime, t.mainLyric]))
     for (const l of lines) { const t = trans.get(l.startTime); if (t) l.translatedLyric = t }
     lyricLines.value = lines
-    nextTick(() => { if (lyricContainer.value) cachedLineEls = lyricContainer.value.querySelectorAll('.lyric-line') })
+    updateAmllLyrics(true)
   } catch (e) { console.error('获取歌词失败:', e); lyricLines.value = [] }
 }
 
-function scrollToActive() {
-  if (!cachedLineEls.length && lyricContainer.value) cachedLineEls = lyricContainer.value.querySelectorAll('.lyric-line')
-  if (cachedLineEls[activeLineIndex.value]) cachedLineEls[activeLineIndex.value].scrollIntoView({ behavior: 'smooth', block: 'center' })
-}
-
-
 watch(() => currentSong.value?.id, (id) => {
-  if (id) { lyricLines.value = []; activeLineIndex.value = -1; loadLyrics() }
+  if (id) { lyricLines.value = []; updateAmllLyrics(true); loadLyrics() }
 }, { immediate: true })
 
 watch(() => props.visible, (v) => {
   if (v) {
     if (currentSong.value?.id && !lyricLines.value.length) loadLyrics()
-    startHighlightLoop() // 可见时启动 rAF 循环
-    // 立即同步一次当前高亮
-    const ls = lyricLines.value
-    if (ls.length) {
-      const n = findActiveLine(playerStore.currentTime - lyricOffset.value * 1000, ls)
-      if (n !== activeLineIndex.value) { activeLineIndex.value = n; nextTick(scrollToActive) }
-    }
+    nextTick(setupAmll)
+    updateAmllAlbum()
+    applyAmllSettings()
+    startAmllLoop()
   } else {
-    stopHighlightLoop() // 不可见时停止
+    stopAmllLoop()
+    disposeAmll()
   }
 })
 
-onUnmounted(() => { stopHighlightLoop() })
+watch([
+  () => settingStore.lyricAmbientEnabled,
+  () => settingStore.lyricAmbientIntensity,
+  () => settingStore.lyricAmbientSpeed,
+  () => settingStore.lyricEnableBlur,
+  () => settingStore.lyricEnableSpring,
+  () => settingStore.lyricActiveScale,
+  () => settingStore.lyricVerticalOffset,
+  () => settingStore.lyricHidePassedLines,
+  () => settingStore.lyricWordFadeWidth,
+], () => {
+  if (settingStore.lyricAmbientEnabled) nextTick(setupAmll)
+  applyAmllSettings()
+})
+
+watch(() => settingStore.lyricShowTranslation, () => {
+  nextTick(() => updateAmllLyrics(true))
+})
+
+onUnmounted(() => {
+  stopAmllLoop()
+  disposeAmll()
+})
 </script>
 
 <style scoped>
@@ -523,15 +746,20 @@ onUnmounted(() => { stopHighlightLoop() })
 
 /* Back Button */
 .back-btn {
-  position: fixed; top: 12px; left: 100px; z-index: 1010;
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 6px 14px; border-radius: 18px; font-size: 13px;
-  color: rgba(255,255,255,0.7);
-  background: rgba(255,255,255,0.08);
-  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  /* macOS traffic lights are positioned at y=14 with a 12px control height.
+     A 36px button therefore needs its center aligned at y=20. */
+  position: fixed; top: 2px; left: 78px; z-index: 1010;
+  display: inline-flex; align-items: center; justify-content: center; flex-direction: row; gap: 6px;
+  min-width: 36px; height: 36px; padding: 0 14px; border-radius: 999px; font-size: 13px;
+  white-space: nowrap;
+  color: rgba(255,255,255,.65);
+  background: rgba(255,255,255,.06);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   transition: all 0.2s; cursor: pointer;
+  -webkit-app-region: no-drag;
 }
-.back-btn:hover { background: rgba(255,255,255,0.15); color: white; }
+.back-btn:hover { background: rgba(255,255,255,.12); color: white; }
 
 /* Settings Button + Panel container */
 .settings-wrapper {
@@ -540,15 +768,37 @@ onUnmounted(() => { stopHighlightLoop() })
 
 /* Settings Panel - dropdown below the button */
 .settings-panel {
+  --settings-text: #f5f5f7;
+  --settings-text-secondary: rgba(245, 245, 247, .72);
+  --settings-text-tertiary: rgba(245, 245, 247, .52);
+  --settings-bg: rgba(30, 30, 38, .72);
+  --settings-border: rgba(255, 255, 255, .12);
+  --settings-control-bg: rgba(255, 255, 255, .08);
+  --settings-control-border: rgba(255, 255, 255, .1);
+  --settings-control-hover: rgba(255, 255, 255, .14);
+  --settings-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 16px 56px rgba(0, 0, 0, .45), 0 4px 16px rgba(0, 0, 0, .2);
   position: absolute; top: 42px; right: 0;
   width: 280px;
-  background: var(--bg-card, rgba(30,30,30,0.95));
-  backdrop-filter: blur(30px) saturate(1.2);
-  -webkit-backdrop-filter: blur(30px) saturate(1.2);
-  border: 1px solid var(--border-light, rgba(255,255,255,0.08));
-  border-radius: var(--radius-lg, 12px);
-  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  background: var(--settings-bg);
+  backdrop-filter: blur(60px) saturate(200%);
+  -webkit-backdrop-filter: blur(60px) saturate(200%);
+  border: 1px solid var(--settings-border);
+  border-radius: var(--radius-xl, 18px);
+  box-shadow: var(--settings-shadow);
+  color: var(--settings-text);
   overflow: hidden;
+}
+
+:root[data-theme="light"] .settings-panel {
+  --settings-text: #1d1d1f;
+  --settings-text-secondary: rgba(29, 29, 31, .72);
+  --settings-text-tertiary: rgba(29, 29, 31, .55);
+  --settings-bg: rgba(250, 250, 252, .78);
+  --settings-border: rgba(0, 0, 0, .1);
+  --settings-control-bg: rgba(0, 0, 0, .04);
+  --settings-control-border: rgba(0, 0, 0, .08);
+  --settings-control-hover: rgba(0, 0, 0, .08);
+  --settings-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 16px 56px rgba(0, 0, 0, .18), 0 4px 16px rgba(0, 0, 0, .08);
 }
 
 .panel-header {
@@ -556,13 +806,13 @@ onUnmounted(() => { stopHighlightLoop() })
   padding: 12px 16px;
   border-bottom: 1px solid var(--border-light, rgba(255,255,255,0.06));
 }
-.panel-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.panel-title { font-size: 14px; font-weight: 600; color: var(--settings-text); }
 .panel-close {
   width: 24px; height: 24px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  color: var(--text-tertiary); transition: all 0.15s; cursor: pointer;
+  color: var(--settings-text-tertiary); transition: all 0.15s; cursor: pointer;
 }
-.panel-close:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+.panel-close:hover { background: var(--settings-control-hover); color: var(--settings-text); }
 
 .panel-body {
   max-height: 400px; overflow-y: auto;
@@ -574,7 +824,7 @@ onUnmounted(() => { stopHighlightLoop() })
   padding: 10px 16px;
 }
 .panel-section + .panel-section {
-  border-top: 1px solid var(--border-light, rgba(255,255,255,0.04));
+  border-top: 1px solid var(--settings-control-border);
 }
 
 .panel-row {
@@ -583,7 +833,7 @@ onUnmounted(() => { stopHighlightLoop() })
 .panel-row.between { justify-content: space-between; }
 
 .setting-label {
-  font-size: 12px; color: var(--text-secondary);
+  font-size: 12px; color: var(--settings-text-secondary);
   white-space: nowrap; min-width: 36px;
 }
 
@@ -591,7 +841,7 @@ onUnmounted(() => { stopHighlightLoop() })
   flex: 1; width: auto; accent-color: var(--accent, #ec4141); height: 3px;
 }
 .range-val {
-  font-size: 11px; color: var(--text-tertiary);
+  font-size: 11px; color: var(--settings-text-tertiary);
   min-width: 24px; text-align: right;
 }
 
@@ -601,53 +851,204 @@ onUnmounted(() => { stopHighlightLoop() })
   border: 2px solid transparent; transition: all 0.12s; cursor: pointer;
 }
 .color-dot:hover { transform: scale(1.15); }
-.color-dot.active { border-color: var(--text-primary); transform: scale(1.15); }
+.color-dot.active { border-color: var(--settings-text); transform: scale(1.15); }
+
+.mini-btn {
+  padding: 5px 10px; border: 1px solid var(--settings-control-border); border-radius: 7px;
+  background: var(--settings-control-bg); color: var(--settings-text-secondary);
+  font-size: 11px; cursor: pointer; transition: all .16s ease;
+}
+.mini-btn:hover:not(:disabled) {
+  background: var(--settings-control-hover); color: var(--settings-text);
+}
+.mini-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.text-input {
+  flex: 1; min-width: 0; padding: 6px 8px;
+  background: var(--settings-control-bg); border: 1px solid var(--settings-control-border);
+  border-radius: 7px; color: var(--settings-text); font-size: 11px; outline: none;
+}
+.text-input::placeholder { color: var(--settings-text-tertiary); }
+.text-input:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.color-picker {
+  width: 26px; height: 26px; padding: 0; flex-shrink: 0; cursor: pointer;
+  background: var(--settings-control-bg); border: 1px solid var(--settings-control-border);
+  border-radius: 50%; overflow: hidden;
+}
+.color-picker::-webkit-color-swatch-wrapper { padding: 2px; }
+.color-picker::-webkit-color-swatch { border: none; border-radius: 50%; }
 
 .select-input {
   flex: 1; padding: 4px 20px 4px 6px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--border-light, rgba(255,255,255,0.08));
+  background: var(--settings-control-bg);
+  border: 1px solid var(--settings-control-border);
   border-radius: var(--radius-sm, 6px);
-  color: var(--text-secondary); font-size: 11px;
+  color: var(--settings-text); font-size: 11px;
   outline: none; cursor: pointer;
   appearance: none; -webkit-appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 6px center;
 }
-.select-input option { background: #2a2a2a; color: #ddd; }
+.select-input option { background: var(--bg-secondary); color: var(--text-primary); }
+
+:root[data-theme="light"] .select-input {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='rgba(0,0,0,0.45)' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
 
 /* Toggle */
 .toggle-switch { position: relative; display: inline-block; width: 36px; height: 20px; cursor: pointer; flex-shrink: 0; }
 .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
 .toggle-track {
   position: absolute; inset: 0;
-  background: rgba(255,255,255,0.12); border-radius: 20px; transition: 0.2s;
+  background: var(--settings-control-hover); border-radius: 20px; transition: 0.2s;
 }
 .toggle-track::before {
   content: ''; position: absolute;
   width: 14px; height: 14px; left: 3px; bottom: 3px;
-  background: rgba(255,255,255,0.7); border-radius: 50%; transition: 0.2s;
+  background: var(--settings-text); border-radius: 50%; transition: 0.2s;
 }
 .toggle-switch input:checked + .toggle-track { background: var(--accent, #ec4141); }
 .toggle-switch input:checked + .toggle-track::before { transform: translateX(16px); background: white; }
 
 /* Background */
-.lyric-bg { position: absolute; inset: -40px; overflow: hidden; }
-.lyric-bg-img { width: 100%; height: 100%; object-fit: cover; transition: filter 0.5s; transform: scale(1.2); }
+.lyric-bg {
+  position: absolute; inset: -40px; overflow: hidden;
+  background: #0a0d16;
+  transition:
+    --glow-1 1.05s cubic-bezier(.33,.01,.22,1),
+    --glow-2 1.05s cubic-bezier(.33,.01,.22,1),
+    --glow-3 1.05s cubic-bezier(.33,.01,.22,1);
+}
+
+.amll-host {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.amll-canvas {
+  display: block;
+  contain: strict;
+}
+.lyric-bg.amll-ready .ambient-scene {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+.amll-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 42%, rgba(0, 0, 0, .34) 100%),
+    linear-gradient(to bottom, rgba(0, 0, 0, .18), transparent 24%, transparent 72%, rgba(0, 0, 0, .28));
+}
+
+.ambient-scene {
+  position: absolute; inset: 0;
+  isolation: isolate;
+}
+.ambient-crossfade-enter-active,
+.ambient-crossfade-leave-active {
+  transition: opacity 1.05s cubic-bezier(.33,.01,.22,1), transform 1.25s cubic-bezier(.33,.01,.22,1), filter 1.05s ease;
+}
+.ambient-crossfade-enter-from {
+  opacity: 0; transform: scale(1.06); filter: blur(28px);
+}
+.ambient-crossfade-leave-to {
+  opacity: 0; transform: scale(1.02); filter: blur(20px);
+}
+.ambient-crossfade-leave-active { z-index: 0; }
+.ambient-crossfade-enter-active { z-index: 1; }
+
+.lyric-bg-img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transform: scale(1.18);
+  transition: filter .8s ease;
+}
 .lyric-bg-default {
   width: 100%; height: 100%;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #1a1a2e 100%);
   transform: scale(1.2);
 }
-.lyric-bg-overlay { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(0,0,0,0.7), rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.7)); transition: opacity 0.5s; }
+
+.ambient-glow-container {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: clamp(0, var(--ambient-opacity, 1) * .82, 1);
+  transition: opacity .8s cubic-bezier(.33,.01,.22,1);
+}
+.ambient-disabled .ambient-glow-container { opacity: 0; }
+
+.ambient-flow {
+  position: absolute;
+  inset: -32%;
+  pointer-events: none;
+  filter: blur(72px) saturate(1.65) contrast(1.04);
+  will-change: transform, opacity;
+}
+
+.ambient-flow-base {
+  background:
+    radial-gradient(46% 52% at 18% 22%, var(--glow-1, rgba(88,108,255,.74)) 0%, transparent 68%),
+    radial-gradient(42% 47% at 76% 28%, var(--glow-2, rgba(236,65,65,.58)) 0%, transparent 70%),
+    radial-gradient(54% 56% at 44% 82%, var(--glow-3, rgba(255,205,112,.42)) 0%, transparent 72%);
+  animation: apple-music-flow-base calc(38s / var(--ambient-speed, 1)) cubic-bezier(.45,.05,.55,.95) infinite alternate;
+}
+
+.ambient-flow-highlight {
+  mix-blend-mode: screen;
+  filter: blur(90px) saturate(1.5);
+  background:
+    radial-gradient(34% 38% at 64% 18%, var(--glow-2, rgba(236,65,65,.34)) 0%, transparent 70%),
+    radial-gradient(38% 42% at 26% 68%, var(--glow-3, rgba(255,205,112,.26)) 0%, transparent 72%),
+    radial-gradient(44% 46% at 80% 76%, var(--glow-1, rgba(88,108,255,.30)) 0%, transparent 74%);
+  animation: apple-music-flow-highlight calc(52s / var(--ambient-speed, 1)) cubic-bezier(.45,.05,.55,.95) infinite alternate;
+}
+
+@keyframes apple-music-flow-base {
+  from { transform: translate3d(-2.5%, -2%, 0) rotate(-2deg) scale(1.08); }
+  to { transform: translate3d(3.5%, 3%, 0) rotate(2.5deg) scale(1.18); }
+}
+@keyframes apple-music-flow-highlight {
+  from { opacity: .38; transform: translate3d(4%, 3%, 0) rotate(2deg) scale(1.12); }
+  to { opacity: .78; transform: translate3d(-5%, -4%, 0) rotate(-3deg) scale(1.22); }
+}
+
+.lyric-bg-overlay {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(to right, rgba(4, 6, 12, .78), rgba(4, 6, 12, .42) 48%, rgba(4, 6, 12, .74)),
+    radial-gradient(circle at 50% 100%, rgba(4, 6, 12, .35), transparent 62%);
+  transition: opacity 0.6s ease;
+}
 
 .lyric-content {
-  position: relative; z-index: 1; width: 100%; height: 100%;
-  display: flex; gap: 60px; padding: 60px 80px; align-items: center;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  gap: 48px;
+  padding: 72px 72px 48px;
+  align-items: center;
 }
 
 .lyric-info { flex: 0 0 40%; min-width: 280px; display: flex; flex-direction: column; align-items: center; gap: 28px; padding-top: 20px; }
-.lyric-album-art { width: min(280px, 100%); aspect-ratio: 1; border-radius: 16px; object-fit: cover; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+.lyric-album-art {
+  width: min(320px, 100%);
+  aspect-ratio: 1;
+  border-radius: 20px;
+  object-fit: cover;
+  box-shadow:
+    0 24px 80px rgba(0,0,0,.55),
+    inset 0 1px 0 rgba(255,255,255,.1);
+}
 .lyric-song-meta { text-align: center; width: 100%; }
 .lyric-song-name { font-size: 20px; font-weight: 700; color: white; max-width: 100%; margin: 0 auto; }
 .lyric-artist { font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 4px; max-width: 100%; margin-left: auto; margin-right: auto; }
@@ -655,28 +1056,87 @@ onUnmounted(() => { stopHighlightLoop() })
 .clickable-link { cursor: pointer; transition: color 0.2s; }
 .clickable-link:hover { color: rgba(255,255,255,0.9); text-decoration: underline; }
 
-.lyric-controls { display: flex; align-items: center; gap: 28px; }
-.ctrl-btn { color: rgba(255,255,255,0.6); transition: all 0.15s; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.ctrl-btn:hover { color: white; transform: scale(1.1); }
-.ctrl-btn.liked { color: var(--accent, #ec4141); }
-.ctrl-btn.liked:hover { color: var(--accent, #ec4141); transform: scale(1.15); }
-.play-btn { width: 48px; height: 48px; background: rgba(255,255,255,0.12); border-radius: 50%; backdrop-filter: blur(20px); }
-.play-btn:hover { background: rgba(255,255,255,0.2); }
+.lyric-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.ctrl-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgba(255,255,255,.65);
+  transition: all .25s cubic-bezier(.25,.46,.45,.94);
+  background: rgba(255,255,255,.06);
+  border: none;
+}
+.ctrl-btn:hover {
+  color: white;
+  background: rgba(255,255,255,.12);
+  transform: scale(1.08);
+}
+.ctrl-btn:active { transform: scale(.95); }
+.ctrl-btn.liked { color: var(--accent, #ff4757); }
+.ctrl-btn.liked:hover { color: var(--accent-hover, #ff6b7a); transform: scale(1.12); }
+.play-btn {
+  width: 56px !important;
+  height: 56px !important;
+  background: rgba(255,255,255,.1);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.12),
+    0 8px 32px rgba(0,0,0,.3);
+}
+.play-btn:hover {
+  background: rgba(255,255,255,.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.18),
+    0 12px 40px rgba(0,0,0,.35);
+}
 
 .lyric-progress { width: 100%; max-width: 300px; }
 .progress-bar { cursor: pointer; padding: 8px 0; }
-.progress-track { height: 3px; background: rgba(255,255,255,0.15); border-radius: 2px; position: relative; }
-.progress-fill { height: 100%; background: rgba(255,255,255,0.8); border-radius: 2px; transition: width 0.1s linear; }
-.progress-dot { position: absolute; top: 50%; transform: translate(-50%,-50%); width: 10px; height: 10px; background: white; border-radius: 50%; opacity: 0; transition: opacity 0.15s; }
+.progress-track {
+  height: 4px;
+  background: rgba(255,255,255,.12);
+  border-radius: 2px;
+  position: relative;
+  transition: height .15s ease;
+}
+.progress-bar:hover .progress-track { height: 6px; }
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(255,255,255,.7), white);
+  border-radius: 3px;
+  transition: width .1s linear;
+}
+.progress-dot {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%,-50%);
+  width: 14px;
+  height: 14px;
+  background: white;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity .15s, transform .15s;
+  box-shadow: 0 0 12px rgba(255,255,255,.4), 0 2px 6px rgba(0,0,0,.3);
+}
 .progress-bar:hover .progress-dot { opacity: 1; }
 .progress-time { display: flex; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 4px; }
 
-.top-right-controls { position: absolute; top: 20px; right: 20px; z-index: 10; display: flex; align-items: center; gap: 10px; }
+.top-right-controls { position: absolute; top: 20px; right: 20px; z-index: 1010; display: flex; align-items: center; gap: 10px; -webkit-app-region: no-drag; }
 .settings-btn {
   width: 36px; height: 36px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   color: rgba(255,255,255,0.6); cursor: pointer; transition: all 0.15s;
-  background: rgba(255,255,255,0.06); flex-shrink: 0;
+  background: var(--hover-overlay); flex-shrink: 0;
+  -webkit-app-region: no-drag;
 }
 .settings-btn:hover { background: rgba(255,255,255,0.12); color: white; }
 
@@ -699,53 +1159,11 @@ onUnmounted(() => { stopHighlightLoop() })
   background: rgba(255,255,255,0.15); border-radius: 2px; height: 4px;
 }
 
-.lyric-scroll-area {
-  flex: 1; height: 100%; overflow-y: auto; scroll-behavior: smooth;
-  scrollbar-width: none; -ms-overflow-style: none;
-  mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
-}
-.lyric-scroll-area::-webkit-scrollbar { display: none; }
-.lyric-padding-top { height: 35vh; }
-.lyric-padding-bottom { height: 35vh; }
-
-.lyric-line { padding: 10px 16px; border-radius: 8px; cursor: pointer; transition: all 0.35s cubic-bezier(0.4,0,0.2,1); transform-origin: left center; }
-.lyric-line:hover { background: rgba(255,255,255,0.03); }
-.lyric-text {
-  font-weight: 600;
-  font-size: var(--lyric-font-size, 28px);
-  font-family: var(--lyric-font-family, inherit);
-  color: color-mix(in srgb, var(--lyric-color, white) 30%, transparent);
-  transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
-}
-.lyric-trans {
-  font-size: var(--lyric-trans-font-size, 14px);
-  margin-top: 4px;
-  color: color-mix(in srgb, var(--lyric-color, white) 20%, transparent);
-  transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
-}
-.lyric-line.passed .lyric-text {
-  opacity: var(--lyric-passed-opacity, 0.3);
-  color: color-mix(in srgb, var(--lyric-color, white) 20%, transparent);
-}
-.lyric-line.active {
-  transform: translateY(var(--lyric-vertical-offset, 0px)) scale(1.05);
-  padding-left: 20px;
-}
-.lyric-line.active.no-scale {
-  transform: translateY(var(--lyric-vertical-offset, 0px)) scale(1);
-}
-.lyric-line.active .lyric-text {
-  font-weight: 700;
-  font-size: var(--lyric-active-font-size, 36px);
-  color: var(--lyric-color, white);
-  text-shadow: 0 0 40px rgba(255,255,255,0.15);
-}
-.lyric-word {
-  transition: color 0.15s, text-shadow 0.15s;
-}
-.lyric-word.word-passed {
-  color: var(--lyric-color, white);
-  text-shadow: 0 0 20px rgba(255,255,255,0.3);
+.amll-lyric-host {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  position: relative;
+  isolation: isolate;
 }
 </style>

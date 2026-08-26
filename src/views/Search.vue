@@ -248,12 +248,12 @@ watch(() => route.query.keywords, (val) => {
   border-radius: var(--radius-md);
   font-size: 13px;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--hover-overlay);
   transition: all 0.2s;
 }
 
 .btn-text:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--hover-overlay);
   color: var(--text-primary);
 }
 
@@ -275,7 +275,7 @@ watch(() => route.query.keywords, (val) => {
 }
 
 .artist-card:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--hover-overlay);
   transform: translateY(-4px);
 }
 
@@ -314,7 +314,7 @@ watch(() => route.query.keywords, (val) => {
 }
 
 .album-card:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--hover-overlay);
   transform: translateY(-4px);
 }
 
@@ -357,7 +357,7 @@ watch(() => route.query.keywords, (val) => {
 }
 
 .playlist-card:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--hover-overlay);
 }
 
 .playlist-img {

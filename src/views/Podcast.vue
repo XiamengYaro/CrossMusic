@@ -76,11 +76,11 @@ onMounted(async () => {
 .dj-rcmdtext { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
 .dj-list { display: flex; flex-direction: column; }
 .dj-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius-md); cursor: pointer; transition: background 0.15s; }
-.dj-item:hover { background: rgba(255,255,255,0.05); }
+.dj-item:hover { background: var(--hover-overlay); }
 .dj-rank { width: 28px; text-align: center; font-size: 14px; color: var(--text-tertiary); font-weight: 600; }
 .dj-item-cover { width: 48px; height: 48px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; }
 .dj-item-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .dj-item-name { font-size: 14px; font-weight: 500; }
 .dj-item-desc { font-size: 12px; color: var(--text-tertiary); }
-.dj-category { font-size: 11px; color: var(--text-tertiary); background: rgba(255,255,255,0.06); padding: 2px 8px; border-radius: 4px; }
+.dj-category { font-size: 11px; color: var(--text-tertiary); background: var(--hover-overlay); padding: 2px 8px; border-radius: 4px; }
 </style>

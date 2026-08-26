@@ -123,7 +123,7 @@ watch(() => userStore.cookie, (val) => { if (val) loadCloudDisk() })
 
 .upload-progress-wrap { margin-bottom: 12px; }
 .upload-progress-bar {
-  height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; margin-bottom: 4px;
+  height: 4px; background: var(--hover-overlay); border-radius: 2px; overflow: hidden; margin-bottom: 4px;
 }
 .upload-progress-fill {
   height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.2s;

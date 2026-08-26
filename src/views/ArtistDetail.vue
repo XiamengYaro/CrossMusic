@@ -118,11 +118,11 @@ watch(() => route.params.id, (id) => {
   border-radius: var(--radius-md);
   font-size: 13px;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--hover-overlay);
   transition: all 0.15s;
 }
 .back-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--hover-overlay);
   color: var(--text-primary);
 }
 

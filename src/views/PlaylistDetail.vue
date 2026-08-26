@@ -21,21 +21,42 @@
             <button class="btn-action btn-refresh" @click="loadPlaylistDetail" :disabled="loading">
               <Icon name="refresh" :size="14" /> 刷新
             </button>
+            <button v-if="isOwnPlaylist" class="btn-action btn-edit" @click="openEdit">
+              <Icon name="edit" :size="14" /> 编辑
+            </button>
             <span class="count">{{ playlist.trackCount }} 首 · {{ formatCount(playlist.playCount) }} 次播放</span>
           </div>
         </div>
       </div>
-      <SongList :songs="songs" @open-comments="openComment" />
+      <SongList :songs="songs" :virtual="true" @open-comments="openComment" />
     </template>
+    <!-- Edit Modal -->
+    <div v-if="showEditModal" class="edit-overlay" @click.self="showEditModal = false">
+      <div class="edit-modal">
+        <h3>编辑歌单</h3>
+        <label class="edit-label">歌单名</label>
+        <input v-model="editName" class="edit-input text-ellipsis" />
+        <label class="edit-label">描述</label>
+        <textarea v-model="editDesc" class="edit-textarea" rows="4"></textarea>
+        <div class="edit-actions">
+          <button class="btn-cancel" @click="showEditModal = false">取消</button>
+          <button class="btn-save" :disabled="savingEdit" @click="savePlaylistEdit">
+            {{ savingEdit ? '保存中...' : '保存' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <CommentDialog :visible="showComment" :song="commentSong" @close="showComment = false" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { usePlayerStore } from '@/stores/player'
-import { getPlaylistDetail, getPlaylistTrackAll } from '@/api/playlist'
+import { getPlaylistDetail, getPlaylistTrackAll, updatePlaylistName, updatePlaylistDesc } from '@/api/playlist'
+import { useUserStore } from '@/stores/user'
 import { formatCount } from '@/utils/format'
 import SongList from '@/components/SongList.vue'
 import CommentDialog from '@/components/CommentDialog.vue'
@@ -48,6 +69,41 @@ const songs = ref([])
 const loading = ref(false)
 const showComment = ref(false)
 const commentSong = ref(null)
+const userStore = useUserStore()
+const showEditModal = ref(false)
+const editName = ref('')
+const editDesc = ref('')
+const savingEdit = ref(false)
+
+const isOwnPlaylist = computed(() => {
+  return playlist.value?.creator?.userId === userStore.userId
+})
+
+function openEdit() {
+  editName.value = playlist.value?.name || ''
+  editDesc.value = playlist.value?.description || ''
+  showEditModal.value = true
+}
+
+async function savePlaylistEdit() {
+  if (!playlist.value?.id) return
+  savingEdit.value = true
+  try {
+    if (editName.value !== playlist.value.name) {
+      await updatePlaylistName(playlist.value.id)
+    }
+    if (editDesc.value !== (playlist.value.description || '')) {
+      await updatePlaylistDesc(playlist.value.id, editDesc.value)
+    }
+    playlist.value.name = editName.value
+    playlist.value.description = editDesc.value
+    showEditModal.value = false
+  } catch (e) {
+    console.error('保存歌单信息失败:', e)
+  } finally {
+    savingEdit.value = false
+  }
+}
 
 async function loadPlaylistDetail() {
   const id = route.params.id
@@ -201,11 +257,11 @@ watch(() => route.params.id, (id) => {
 }
 
 .btn-refresh {
-  background: rgba(255,255,255,0.08);
+  background: var(--hover-overlay);
   color: var(--text-secondary);
   display: inline-flex; align-items: center; gap: 4px;
 }
-.btn-refresh:hover:not(:disabled) { background: rgba(255,255,255,0.14); color: var(--text-primary); }
+.btn-refresh:hover:not(:disabled) { background: var(--hover-overlay); color: var(--text-primary); }
 .btn-refresh:disabled { opacity: 0.5; }
 
 .count {
@@ -222,12 +278,28 @@ watch(() => route.params.id, (id) => {
   border-radius: var(--radius-md);
   font-size: 13px;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--hover-overlay);
   transition: all 0.15s;
 }
 
 .back-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--hover-overlay);
   color: var(--text-primary);
 }
+
+.edit-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); backdrop-filter: blur(40px) saturate(180%); display: flex; align-items: center; justify-content: center; z-index: 1000; animation: fadeIn .2s ease; }
+.edit-modal { background: var(--bg-secondary); border-radius: var(--radius-xl); width: 400px; padding: 24px; box-shadow: var(--shadow-lg); border: var(--glass-border); }
+.edit-modal h3 { font-size: 16px; font-weight: 600; margin: 0 0 16px; }
+.edit-label { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; display: block; }
+.edit-input { width: 100%; padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); font-size: 14px; margin-bottom: 12px; box-sizing: border-box; }
+.edit-textarea { width: 100%; padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); font-size: 14px; resize: vertical; margin-bottom: 16px; box-sizing: border-box; }
+.edit-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.btn-cancel { padding: 6px 16px; background: transparent; color: var(--text-secondary); border-radius: var(--radius-md); cursor: pointer; transition: all .15s; }
+.btn-cancel:hover { color: var(--text-primary); background: var(--hover-overlay); }
+.btn-save { padding: 6px 20px; background: var(--accent); color: white; border-radius: var(--radius-md); cursor: pointer; transition: all .15s; }
+.btn-save:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-save:disabled { opacity: .5; cursor: not-allowed; }
+.btn-edit:hover { background: rgba(255,255,255,.08); }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
 </style>

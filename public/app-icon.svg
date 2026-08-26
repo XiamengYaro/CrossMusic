@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <rect width="1024" height="1024" rx="200" fill="white"/>
+  <g transform="translate(560, 200)">
+    <!-- Note head -->
+    <ellipse cx="-80" cy="580" rx="80" ry="58" fill="#2d2d2d" transform="rotate(-20, -80, 580)"/>
+    <!-- Stem -->
+    <rect x="-10" y="40" width="28" height="540" rx="14" fill="#2d2d2d"/>
+    <!-- Flag 1 -->
+    <path d="M18,40 C80,80 120,160 100,220 C80,180 50,130 18,100 Z" fill="#2d2d2d"/>
+    <!-- Flag 2 -->
+    <path d="M18,130 C80,170 120,250 100,310 C80,270 50,220 18,190 Z" fill="#2d2d2d"/>
+  </g>
+</svg>

@@ -40,10 +40,10 @@
             @dblclick="playHistorySong(song)"
           >
             <span class="song-index">{{ idx + 1 }}</span>
-            <img
+            <span class="cover-wrap"><img
               :src="(song.al?.picUrl || '') + '?param=60y60'"
               class="song-cover"
-            />
+            /></span>
             <div class="song-info">
               <span class="song-name text-ellipsis">{{ song.name }}</span>
               <span class="song-artist text-ellipsis">{{ getArtistNames(song) }}</span>
@@ -88,10 +88,10 @@
             @dblclick="playSong(song)"
           >
             <span class="song-index">{{ idx + 1 }}</span>
-            <img
+            <span class="cover-wrap"><img
               :src="(song.al?.picUrl || '') + '?param=60y60'"
               class="song-cover"
-            />
+            /></span>
             <div class="song-info">
               <span class="song-name text-ellipsis">{{ song.name }}</span>
               <span class="song-artist text-ellipsis">{{ getArtistNames(song) }}</span>
@@ -268,7 +268,7 @@ onMounted(() => {
 .date-select {
   padding: 6px 12px;
   padding-right: 28px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--hover-overlay);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   color: var(--text-primary);
@@ -344,11 +344,20 @@ onMounted(() => {
 
 .playlist-card {
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: transform 0.25s ease;
+  overflow: hidden;
+  border-radius: var(--radius-md);
 }
 
 .playlist-card:hover {
   transform: translateY(-4px);
+}
+.playlist-card:hover .playlist-cover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+.playlist-card:hover .playlist-name {
+  color: var(--accent);
 }
 
 .playlist-cover {
@@ -356,6 +365,7 @@ onMounted(() => {
   aspect-ratio: 1;
   border-radius: var(--radius-md);
   object-fit: cover;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .playlist-info {
@@ -366,6 +376,7 @@ onMounted(() => {
   font-size: 13px;
   font-weight: 500;
   display: block;
+  transition: color 0.15s ease;
 }
 
 .playlist-playcount {
@@ -386,11 +397,18 @@ onMounted(() => {
   padding: 10px 12px;
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s ease;
 }
 
 .song-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--hover-overlay);
+}
+.song-item:hover .song-cover {
+  transform: scale(1.12);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.song-item:hover .song-name {
+  color: var(--accent);
 }
 
 .song-item.active {
@@ -408,11 +426,22 @@ onMounted(() => {
   color: var(--text-tertiary);
 }
 
-.song-cover {
+.cover-wrap {
   width: 44px;
   height: 44px;
   border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.song-cover {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  will-change: transform;
 }
 
 .song-info {
@@ -425,6 +454,7 @@ onMounted(() => {
 .song-name {
   font-size: 14px;
   font-weight: 500;
+  transition: color 0.15s ease;
 }
 
 .song-artist {

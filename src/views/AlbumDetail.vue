@@ -127,8 +127,8 @@ function openComment(song) {
 .loading-center { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; color: var(--text-secondary); gap: 16px; }
 .spinner { display: inline-block; width: 24px; height: 24px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; }
 .btn-retry { padding: 6px 16px; background: var(--accent); color: white; border-radius: var(--radius-md); font-size: 13px; }
-.back-btn { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; margin-bottom: 16px; border-radius: var(--radius-md); font-size: 13px; color: var(--text-secondary); background: rgba(255,255,255,0.06); transition: all 0.15s; }
-.back-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+.back-btn { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; margin-bottom: 16px; border-radius: var(--radius-md); font-size: 13px; color: var(--text-secondary); background: var(--hover-overlay); transition: all 0.15s; }
+.back-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
 .album-header { display: flex; gap: 24px; margin-bottom: 32px; }
 .album-cover { width: 180px; height: 180px; border-radius: var(--radius-md); object-fit: cover; box-shadow: var(--shadow-md); flex-shrink: 0; }
 .album-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; justify-content: center; }

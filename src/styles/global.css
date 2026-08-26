@@ -5,10 +5,12 @@
   --bg-tertiary: #363636;
   --bg-hover: #3a3a3a;
   --bg-active: #4a4a4a;
-  --bg-sidebar: rgba(30, 30, 30, 0.55);
-  --bg-card: rgba(44, 44, 44, 0.6);
-  --bg-modal: rgba(44, 44, 44, 0.7);
+  --bg-sidebar: rgba(255, 255, 255, 0.03);
+  --bg-card: rgba(255, 255, 255, 0.06);
+  --bg-modal: rgba(40, 40, 45, 0.65);
   --bg-input: rgba(58, 58, 58, 0.7);
+  --hover-overlay: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.06);
 
   --text-primary: #ffffff;
   --text-secondary: #a0a0a0;
@@ -38,21 +40,40 @@
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
 
-  /* Liquid Glass Effect */
-  --glass-blur: blur(40px) saturate(200%);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.08);
-  --glass-highlight: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0) 50%, rgba(255, 255, 255, 0.03) 100%);
+  /* Liquid Glass Effect - Apple Design Language */
+  --glass-blur: blur(40px) saturate(180%);
+  --glass-blur-heavy: blur(60px) saturate(200%);
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-bg-strong: rgba(255, 255, 255, 0.1);
+  --glass-bg-subtle: rgba(255, 255, 255, 0.03);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.12);
+  --glass-border-strong: 1px solid rgba(255, 255, 255, 0.18);
+  --glass-highlight: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.02) 40%,
+    rgba(255, 255, 255, 0) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  --glass-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 4px 24px rgba(0, 0, 0, 0.25),
+    0 1px 4px rgba(0, 0, 0, 0.15);
+  --glass-shadow-hover:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    0 2px 8px rgba(0, 0, 0, 0.2);
 
   /* Sidebar & PlayerBar theme */
-  --panel-bg: rgba(30, 30, 30, 0.75);
-  --panel-border: 1px solid rgba(255, 255, 255, 0.08);
+  --panel-bg: rgba(255, 255, 255, 0.04);
+  --panel-border: 1px solid rgba(255, 255, 255, 0.12);
   --panel-hover: rgba(255, 255, 255, 0.06);
   --panel-hover-strong: rgba(255, 255, 255, 0.1);
   --panel-input-bg: rgba(255, 255, 255, 0.04);
   --panel-input-focus: rgba(255, 255, 255, 0.08);
   --panel-scrollbar: rgba(255, 255, 255, 0.15);
-  --panel-player-bg: rgba(44, 44, 44, 0.88);
-  --panel-player-border: 1px solid rgba(255, 255, 255, 0.1);
+  --panel-player-bg: rgba(255, 255, 255, 0.06);
+  --panel-player-border: 1px solid rgba(255, 255, 255, 0.14);
   --panel-player-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   --panel-player-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   --panel-drawer-bg: rgba(30, 30, 30, 0.95);
@@ -71,10 +92,12 @@
   --bg-tertiary: #e8e8ed;
   --bg-hover: #eaeaef;
   --bg-active: #d8d8dd;
-  --bg-sidebar: rgba(245, 245, 247, 0.75);
-  --bg-card: rgba(255, 255, 255, 0.7);
-  --bg-modal: rgba(255, 255, 255, 0.8);
+  --bg-sidebar: rgba(255, 255, 255, 0.45);
+  --bg-card: rgba(255, 255, 255, 0.6);
+  --bg-modal: rgba(255, 255, 255, 0.72);
   --bg-input: rgba(232, 232, 237, 0.7);
+  --hover-overlay: rgba(0, 0, 0, 0.05);
+  --border-subtle: rgba(0, 0, 0, 0.06);
 
   --text-primary: #1d1d1f;
   --text-secondary: #6e6e73;
@@ -92,19 +115,38 @@
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.16);
 
-  --glass-blur: blur(40px) saturate(180%);
-  --glass-border: 1px solid rgba(0, 0, 0, 0.08);
-  --glass-highlight: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 50%, rgba(255, 255, 255, 0.4) 100%);
+  --glass-blur: blur(40px) saturate(160%);
+  --glass-blur-heavy: blur(60px) saturate(180%);
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg-strong: rgba(255, 255, 255, 0.7);
+  --glass-bg-subtle: rgba(255, 255, 255, 0.3);
+  --glass-border: 1px solid rgba(0, 0, 0, 0.06);
+  --glass-border-strong: 1px solid rgba(0, 0, 0, 0.1);
+  --glass-highlight: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.3) 40%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.6) 100%
+  );
+  --glass-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 4px 20px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.06);
+  --glass-shadow-hover:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 8px 28px rgba(0, 0, 0, 0.12),
+    0 2px 6px rgba(0, 0, 0, 0.08);
 
   /* Sidebar & PlayerBar theme */
-  --panel-bg: rgba(245, 245, 247, 0.85);
+  --panel-bg: rgba(255, 255, 255, 0.5);
   --panel-border: 1px solid rgba(0, 0, 0, 0.08);
   --panel-hover: rgba(0, 0, 0, 0.04);
   --panel-hover-strong: rgba(0, 0, 0, 0.08);
   --panel-input-bg: rgba(0, 0, 0, 0.04);
   --panel-input-focus: rgba(0, 0, 0, 0.06);
   --panel-scrollbar: rgba(0, 0, 0, 0.12);
-  --panel-player-bg: rgba(255, 255, 255, 0.88);
+  --panel-player-bg: rgba(255, 255, 255, 0.55);
   --panel-player-border: 1px solid rgba(0, 0, 0, 0.1);
   --panel-player-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.8);
   --panel-player-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
@@ -244,7 +286,93 @@ input {
   white-space: nowrap;
 }
 
-/* Animations */
+
+/* ====== Liquid Glass Utility Classes ====== */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-strong {
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--glass-blur-heavy);
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  border: var(--glass-border-strong);
+  box-shadow: var(--glass-shadow-hover);
+}
+
+.glass-subtle {
+  background: var(--glass-bg-subtle);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border: var(--glass-border);
+}
+
+.glass-pill {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: 9999px;
+  box-shadow: var(--glass-shadow);
+}
+
+/* Glass button */
+.gbtn {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  overflow: hidden;
+}
+.gbtn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--glass-highlight);
+  pointer-events: none;
+}
+.gbtn:hover {
+  background: var(--glass-bg-strong);
+  box-shadow: var(--glass-shadow-hover);
+  transform: translateY(-1px);
+}
+.gbtn:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: var(--glass-shadow);
+}
+
+/* Glass panel/dropdown */
+.gpanel {
+  background: var(--bg-modal);
+  backdrop-filter: var(--glass-blur-heavy);
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  border: var(--glass-border-strong);
+  border-radius: var(--radius-xl);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 16px 48px rgba(0, 0, 0, 0.4),
+    0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Light theme overrides for gpanel */
+:root[data-theme="light"] .gpanel {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 16px 48px rgba(0, 0, 0, 0.12),
+    0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* Animations section follows */
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -382,3 +510,8 @@ input {
   transform: scale(0.92);
   opacity: 0;
 }
+
+/* Registered lyric ambient variables allow Chromium to interpolate colors smoothly. */
+@property --glow-1 { syntax: '<color>'; inherits: true; initial-value: rgba(88,108,255,0); }
+@property --glow-2 { syntax: '<color>'; inherits: true; initial-value: rgba(236,65,65,0); }
+@property --glow-3 { syntax: '<color>'; inherits: true; initial-value: rgba(255,205,112,0); }

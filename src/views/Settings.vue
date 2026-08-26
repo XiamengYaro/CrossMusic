@@ -12,6 +12,29 @@
           <button class="quality-btn" :class="{ active: settingStore.theme === 'light' }" @click="settingStore.setTheme('light')">浅色</button>
         </div>
       </div>
+      <div class="setting-item">
+        <label class="setting-label">歌词流光</label>
+        <label class="toggle-switch" @click.stop>
+          <input type="checkbox" :checked="settingStore.lyricAmbientEnabled"
+            @change="settingStore.setLyricSetting('lyricAmbientEnabled', $event.target.checked)" />
+          <span class="toggle-track"></span>
+        </label>
+        <span class="detail-hint">歌词页动态氛围背景</span>
+      </div>
+      <div v-if="settingStore.lyricAmbientEnabled" class="setting-item">
+        <label class="setting-label">流光强度</label>
+        <input type="range" class="range-input" min="0" max="2" step="0.05"
+          :value="settingStore.lyricAmbientIntensity"
+          @input="settingStore.setLyricSetting('lyricAmbientIntensity', Number($event.target.value))" />
+        <span class="range-val">{{ Math.round(settingStore.lyricAmbientIntensity * 100) }}%</span>
+      </div>
+      <div v-if="settingStore.lyricAmbientEnabled" class="setting-item">
+        <label class="setting-label">流动速度</label>
+        <input type="range" class="range-input" min="0.25" max="2.5" step="0.05"
+          :value="settingStore.lyricAmbientSpeed"
+          @input="settingStore.setLyricSetting('lyricAmbientSpeed', Number($event.target.value))" />
+        <span class="range-val">{{ settingStore.lyricAmbientSpeed.toFixed(2) }}x</span>
+      </div>
     </div>
 
     <!-- API Settings -->
@@ -78,6 +101,13 @@
     <!-- Play Settings -->
     <div class="setting-section">
       <h2 class="section-title"><Icon name="headphones" :size="16" /> 播放设置</h2>
+      <div class="setting-item">
+        <label class="setting-label">音频输出设备</label>
+        <select class="input-field" :value="playerStore.selectedOutputDevice" @change="e => playerStore.setAudioOutput(e.target.value)" style="max-width: 280px;">
+          <option value="">默认设备</option>
+          <option v-for="d in playerStore.audioOutputDevices" :key="d.deviceId" :value="d.deviceId">{{ d.label || d.deviceId }}</option>
+        </select>
+      </div>
       <div class="setting-item">
         <label class="setting-label">默认音质</label>
         <div class="quality-options">
@@ -151,6 +181,34 @@
       </div>
     </div>
 
+    <!-- Menu Bar Settings (macOS) -->
+    <div v-if="isMacOS" class="setting-section">
+      <h2 class="section-title"><Icon name="monitor" :size="16" /> 菜单栏显示</h2>
+      <div class="setting-item">
+        <label class="setting-label">显示歌词</label>
+        <label class="toggle-switch">
+          <input type="checkbox" :checked="settingStore.menubarShowLyric" @change="settingStore.setMenubarShowLyric($event.target.checked)" />
+          <span class="toggle-track"></span>
+        </label>
+        <span class="detail-hint">菜单栏显示当前播放歌词</span>
+      </div>
+      <div class="setting-item">
+        <label class="setting-label">显示歌手</label>
+        <label class="toggle-switch">
+          <input type="checkbox" :checked="settingStore.menubarShowArtist" @change="settingStore.setMenubarShowArtist($event.target.checked)" />
+          <span class="toggle-track"></span>
+        </label>
+        <span class="detail-hint">歌曲名后显示歌手名</span>
+      </div>
+      <div class="setting-item">
+        <label class="setting-label">显示长度</label>
+        <input type="range" class="range-input" :min="10" :max="40" :step="1"
+          :value="settingStore.menubarMaxLength"
+          @input="settingStore.setMenubarMaxLength(Number($event.target.value))" />
+        <span class="range-val">{{ settingStore.menubarMaxLength }}字</span>
+      </div>
+    </div>
+
     <!-- Shortcut Settings -->
     <div class="setting-section">
       <h2 class="section-title"><Icon name="settings" :size="16" /> 快捷键</h2>
@@ -163,17 +221,10 @@
       </div>
     </div>
 
-    <!-- Debug Settings -->
-    <div class="setting-section">
+    <!-- Debug Settings (hidden, only visible when debugMode is true) -->
+    <div v-if="settingStore.debugMode" class="setting-section">
       <h2 class="section-title"><Icon name="settings" :size="16" /> Debug</h2>
-      <div class="setting-item">
-        <label class="setting-label">调试模式</label>
-        <label class="toggle-switch" @click.stop>
-          <input type="checkbox" :checked="settingStore.debugMode" @change="settingStore.setDebugMode($event.target.checked)" />
-          <span class="toggle-track"></span>
-        </label>
-      </div>
-      <div v-if="settingStore.debugMode" class="debug-actions">
+      <div class="debug-actions">
         <button class="api-btn" @click="handleViewLog"><Icon name="folder" :size="14" /> 查看日志</button>
         <button class="api-btn" @click="handleClearLogs"><Icon name="trash" :size="14" /> 清除日志</button>
         <button class="api-btn stop-btn" @click="handleClearData"><Icon name="trash" :size="14" /> 清除存储</button>
@@ -193,7 +244,7 @@
     <div class="setting-section">
       <h2 class="section-title"><Icon name="star" :size="16" /> 关于</h2>
       <div class="about-section">
-        <div class="about-logo"><Icon name="music" :size="24" /></div>
+        <div class="about-logo" @click="onLogoClick"><img src="/app-icon.svg" alt="CrossMusic" class="about-logo-img" /></div>
         <div class="about-info">
           <span class="about-title">CrossMusic</span>
           <span class="about-version">版本 {{ appVersion }}</span>
@@ -208,10 +259,12 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { showToast } from '@/utils/toast'
 import { useRoute } from 'vue-router'
 import { useSettingStore } from '@/stores/setting'
-import { useUserStore } from '@/stores/user'
 import { usePlayerStore } from '@/stores/player'
+import { useI18n } from '@/i18n'
+import { useUserStore } from '@/stores/user'
 import { testConnection, setBaseURL } from '@/api/request'
 import { checkApiStatus, startApiServer, stopApiServer, selectDirectory, readLog, clearLogs, clearAllData, resetApp } from '@/utils/tauri-api'
 import Icon from '@/components/icons/Icon.vue'
@@ -220,8 +273,10 @@ import pkg from '../../package.json'
 const appVersion = `v${pkg.version}`
 
 const settingStore = useSettingStore()
-const userStore = useUserStore()
+const { t, locale, setLocale } = useI18n()
 const playerStore = usePlayerStore()
+const isMacOS = window.electronAPI?.platform === 'darwin'
+const userStore = useUserStore()
 const route = useRoute()
 
 const apiUrl = ref(settingStore.apiBaseUrl)
@@ -229,12 +284,25 @@ const apiStatus = ref('')
 const apiStatusClass = ref('')
 const apiRunning = ref(false)
 const apiLoading = ref(false)
+const accentColors = ['#ff4757', '#e84393', '#fd79a8', '#6c5ce7', '#00b894', '#0984e3', '#f39c12']
 const apiPortInput = ref(settingStore.apiPort || '3000')
 const portSaved = ref(false)
 const downloadDir = ref(settingStore.downloadDir || '')
 const dirSaved = ref(false)
 const debugStatus = ref('')
 const debugStatusClass = ref('')
+const logoClickCount = ref(0)
+let logoClickTimer = null
+function onLogoClick() {
+  logoClickCount.value++
+  clearTimeout(logoClickTimer)
+  logoClickTimer = setTimeout(() => { logoClickCount.value = 0 }, 2000)
+  if (logoClickCount.value >= 10) {
+    logoClickCount.value = 0
+    settingStore.setDebugMode(!settingStore.debugMode)
+    showToast(settingStore.debugMode ? '调试模式已开启' : '调试模式已关闭')
+  }
+}
 const showLogContent = ref(false)
 const logContent = ref('')
 
@@ -441,7 +509,9 @@ function resetShortcut(action) {
 .log-content { padding: 12px; font-size: 11px; font-family: monospace; color: var(--text-secondary); max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
 
 .about-section { display: flex; align-items: center; gap: 14px; }
-.about-logo { width: 48px; height: 48px; border-radius: 8px; background: var(--accent-light); display: flex; align-items: center; justify-content: center; color: var(--accent); }
+.about-logo { width: 56px; height: 56px; border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.15s; }
+.about-logo:active { transform: scale(0.92); }
+.about-logo-img { width: 100%; height: 100%; object-fit: cover; }
 .about-info { display: flex; flex-direction: column; }
 .about-title { font-size: 15px; font-weight: 600; }
 .about-version { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
@@ -489,6 +559,16 @@ function resetShortcut(action) {
 .shortcut-item { gap: 12px; }
 .shortcut-input-wrap { display: flex; align-items: center; gap: 6px; }
 .shortcut-input { width: 180px; text-align: center; font-family: monospace; font-size: 12px; cursor: pointer; }
-.shortcut-reset-btn { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.06); color: var(--text-secondary); font-size: 14px; transition: all 0.15s; }
+.shortcut-reset-btn { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--hover-overlay); color: var(--text-secondary); font-size: 14px; transition: all 0.15s; }
 .shortcut-reset-btn:hover { background: rgba(255,255,255,0.12); color: var(--text-primary); }
+
+.accent-color-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.accent-dot {
+  width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent;
+  cursor: pointer; transition: transform .15s, border-color .15s;
+}
+.accent-dot.active { border-color: var(--text-primary); transform: scale(1.15); }
+.accent-dot:hover { transform: scale(1.1); }
+.accent-picker { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: none; padding: 0; background: none; }
+
 </style>

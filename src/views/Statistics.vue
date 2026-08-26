@@ -180,14 +180,14 @@ onMounted(() => { if (tab.value === 'cloud') loadCloudData() })
 <style scoped>
 .page { padding: 24px 32px; padding-bottom: 100px; }
 .page-title { font-size: 28px; font-weight: 700; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
-.tabs { display: flex; gap: 4px; margin-bottom: 24px; background: rgba(255,255,255,0.04); border-radius: var(--radius-md); padding: 4px; width: fit-content; }
+.tabs { display: flex; gap: 4px; margin-bottom: 24px; background: var(--hover-overlay); border-radius: var(--radius-md); padding: 4px; width: fit-content; }
 .tab { padding: 8px 20px; border: none; border-radius: var(--radius-sm); background: transparent; color: var(--text-secondary); font-size: 14px; cursor: pointer; transition: all 0.2s; }
 .tab.active { background: var(--accent); color: white; }
-.tab:hover:not(.active) { background: rgba(255,255,255,0.06); }
+.tab:hover:not(.active) { background: var(--hover-overlay); }
 .loading-center { display: flex; justify-content: center; align-items: center; height: 200px; color: var(--text-secondary); }
 .spinner { display: inline-block; width: 24px; height: 24px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; }
 .stats-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 36px; }
-.stat-card { background: rgba(255,255,255,0.04); border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 24px; text-align: center; display: flex; flex-direction: column; gap: 8px; }
+.stat-card { background: var(--hover-overlay); border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 24px; text-align: center; display: flex; flex-direction: column; gap: 8px; }
 .stat-value { font-size: 32px; font-weight: 700; color: var(--accent); }
 .stat-label { font-size: 13px; color: var(--text-secondary); }
 .section { margin-bottom: 36px; }
@@ -199,7 +199,7 @@ onMounted(() => { if (tab.value === 'cloud') loadCloudData() })
 .chart-count { font-size: 11px; color: var(--text-secondary); }
 .top-list { display: flex; flex-direction: column; }
 .top-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius-sm); transition: background 0.15s; }
-.top-item:hover { background: rgba(255,255,255,0.04); }
+.top-item:hover { background: var(--hover-overlay); }
 .top-rank { width: 28px; text-align: center; font-size: 16px; font-weight: 700; color: var(--text-tertiary); }
 .top-rank.gold { color: var(--accent); }
 .top-cover { width: 36px; height: 36px; border-radius: 4px; object-fit: cover; }

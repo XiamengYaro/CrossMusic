@@ -144,7 +144,7 @@ function formatCommentTime(ts) {
   border-radius: var(--radius-sm);
   transition: all 0.15s;
 }
-.dialog-close:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+.dialog-close:hover { background: var(--hover-overlay); color: var(--text-primary); }
 
 .comment-list {
   flex: 1;

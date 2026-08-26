@@ -111,7 +111,7 @@ onMounted(() => loadFm())
 .fm-artist { font-size: 14px; color: var(--text-secondary); }
 .fm-album { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
 .fm-controls { display: flex; align-items: center; gap: 24px; margin-top: 8px; }
-.fm-btn { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.06); color: var(--text-secondary); transition: all 0.15s; }
+.fm-btn { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--hover-overlay); color: var(--text-secondary); transition: all 0.15s; }
 .fm-btn:hover { background: rgba(255,255,255,0.12); color: var(--text-primary); }
 .fm-btn-play { width: 64px; height: 64px; background: var(--accent); color: white; }
 .fm-btn-play:hover { background: var(--accent-hover); color: white; }

@@ -108,7 +108,7 @@ onMounted(async () => {
 <style scoped>
 .page { padding: 24px 32px; padding-bottom: 100px; }
 .back-btn { display: inline-flex; align-items: center; gap: 4px; background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 14px; padding: 6px 10px; border-radius: var(--radius-sm); margin-bottom: 16px; transition: background 0.15s, color 0.15s; }
-.back-btn:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+.back-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
 .loading-state { display: flex; justify-content: center; align-items: center; height: 300px; color: var(--text-secondary); }
 .spinner { display: inline-block; width: 24px; height: 24px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; }
 .dj-header { display: flex; gap: 24px; margin-bottom: 32px; }
@@ -118,14 +118,14 @@ onMounted(async () => {
 .dj-name { font-size: 24px; font-weight: 700; }
 .dj-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
 .dj-meta { display: flex; gap: 12px; font-size: 13px; color: var(--text-tertiary); }
-.dj-cat { background: rgba(255,255,255,0.06); padding: 1px 8px; border-radius: 4px; }
+.dj-cat { background: var(--hover-overlay); padding: 1px 8px; border-radius: 4px; }
 .actions { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
 .btn-action { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; border: none; border-radius: var(--radius-md); font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
 .btn-action:hover { opacity: 0.85; }
 .btn-primary { background: var(--accent); color: white; }
 .program-list { display: flex; flex-direction: column; }
 .program-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s; }
-.program-item:hover { background: rgba(255,255,255,0.04); }
+.program-item:hover { background: var(--hover-overlay); }
 .prog-idx { width: 28px; text-align: center; font-size: 14px; color: var(--text-tertiary); font-weight: 600; }
 .prog-cover { width: 48px; height: 48px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; }
 .prog-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }

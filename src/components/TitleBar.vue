@@ -95,7 +95,7 @@ function close() {
 }
 
 .titlebar-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--hover-overlay);
 }
 
 .btn-close:hover {

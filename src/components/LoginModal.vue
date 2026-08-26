@@ -352,7 +352,7 @@ async function handleLoginSuccess(cookie) {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(40px) saturate(180%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -360,7 +360,7 @@ async function handleLoginSuccess(cookie) {
   animation: fadeIn 0.2s ease;
 }
 .modal-container {
-  background: rgba(44, 44, 44, 0.65);
+  background: var(--bg-modal);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-radius: var(--radius-xl);
@@ -389,7 +389,7 @@ async function handleLoginSuccess(cookie) {
 .modal-header h2 { font-size: 18px; font-weight: 600; }
 .close-btn {
   width: 28px; height: 28px; border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--hover-overlay);
   display: flex; align-items: center; justify-content: center;
   color: var(--text-secondary);
   transition: all 0.2s;
@@ -466,7 +466,7 @@ async function handleLoginSuccess(cookie) {
 .input-field {
   width: 100%;
   padding: 10px 14px;
-  background: rgba(58, 58, 58, 0.6);
+  background: var(--bg-input);
   backdrop-filter: blur(10px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -488,7 +488,7 @@ async function handleLoginSuccess(cookie) {
 }
 .btn-send-captcha {
   padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--hover-overlay);
   color: var(--accent);
   border-radius: var(--radius-md);
   font-size: 13px;
@@ -526,7 +526,7 @@ async function handleLoginSuccess(cookie) {
 }
 .btn-ghost {
   padding: 8px 24px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--hover-overlay);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: 13px;
@@ -534,7 +534,7 @@ async function handleLoginSuccess(cookie) {
   transition: all 0.2s;
 }
 .btn-ghost:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--hover-overlay);
   color: var(--text-primary);
 }
 .btn-ghost:disabled {
