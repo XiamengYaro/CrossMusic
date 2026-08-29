@@ -162,10 +162,6 @@ async function checkForUpdates({ manual = false } = {}) {
 function createWindow() {
   const iconPath = path.join(__dirname, '../build/icon.png')
 
-  if (isMac && app.dock) {
-    try { app.dock.setIcon(iconPath) } catch (e) {}
-  }
-
   const windowOptions = {
     width: 1200,
     height: 800,
