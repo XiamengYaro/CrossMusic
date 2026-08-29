@@ -24,4 +24,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   offShortcut: (callback) => ipcRenderer.removeListener('shortcut', callback),
   updateSongState: (state) => ipcRenderer.send('update-song-state', state),
   updateMenubarConfig: (config) => ipcRenderer.send('update-menubar-config', config),
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  onUpdateEvent: (callback) => {
+    const handler = (_e, payload) => callback(payload)
+    ipcRenderer.on('update-event', handler)
+    return () => ipcRenderer.removeListener('update-event', handler)
+  },
 })

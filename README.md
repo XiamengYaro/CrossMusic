@@ -176,6 +176,41 @@ npm run preview         # 预览构建产物
 | `⌘+←` | 上一首 |
 | `⌘+→` | 下一首 |
 
+## 🚀 发版与自动更新
+
+### 版本号机制
+
+版本号遵循语义化版本（`vX.Y.Z`），每次发布通过打 Git 标签触发，GitHub Actions 会自动完成全平台构建并发布 Release。
+
+发布步骤：
+
+```bash
+# 1. 升级版本号（patch / minor / major 按变更程度选择），自动生成 vX.Y.Z 标签和提交
+npm version patch -m "release: v%s"        # 修复类变更
+# npm version minor -m "release: v%s"      # 新功能
+# npm version major -m "release: v%s"      # 不兼容变更
+
+# 2. 推送分支（确保 main 同步）
+git push origin optimize/size-memory
+git checkout main && git merge --ff-only optimize/size-memory && git push origin main
+
+# 3. 推送标签，触发 CI 自动构建 + 发布
+git push origin vX.Y.Z
+```
+
+推送标签后，CI 会自动：质量检查 → 创建 draft Release → macOS（x64 + arm64）/ Windows（x64）/ Linux（x64）三平台并行打包并上传安装包 → 全部成功后自动转为正式 Release。
+
+### 自动更新
+
+应用内置 electron-updater 自动更新：
+
+- 启动 10 秒后自动检查新版本，发现新版本后后台静默下载，下载完成后提示重启安装
+- 托盘菜单和「设置 → 关于」提供手动检查入口
+- 更新机制说明：
+  - **Windows**：NSIS 安装包和便携版均支持自动更新
+  - **Linux**：AppImage 支持自动更新（deb 包需手动下载安装）
+  - **macOS**：自动更新依赖 Developer ID 签名，当前为 ad-hoc 签名构建，暂无法自动更新，请从 Releases 页面手动下载新版本
+
 ## 📝 注意事项
 
 - 构建产物输出到 `release/` 目录

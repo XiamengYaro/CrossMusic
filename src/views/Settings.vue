@@ -251,6 +251,11 @@
           <a href="https://github.com/XiamengYaro/CrossMusic" target="_blank" class="about-link">GitHub: https://github.com/XiamengYaro/CrossMusic</a>
           <span class="about-license">许可证: MIT License</span>
         </div>
+        <div class="about-actions">
+          <button class="about-btn" :disabled="checkingUpdate" @click="onCheckUpdate">
+            {{ checkingUpdate ? '检查中…' : '检查更新' }}
+          </button>
+        </div>
       </div>
     </div>
     
@@ -266,11 +271,30 @@ import { usePlayerStore } from '@/stores/player'
 import { useI18n } from '@/i18n'
 import { useUserStore } from '@/stores/user'
 import { testConnection, setBaseURL } from '@/api/request'
-import { checkApiStatus, startApiServer, stopApiServer, selectDirectory, readLog, clearLogs, clearAllData, resetApp } from '@/utils/tauri-api'
+import { checkApiStatus, startApiServer, stopApiServer, selectDirectory, readLog, clearLogs, clearAllData, resetApp, checkForUpdates } from '@/utils/tauri-api'
 import Icon from '@/components/icons/Icon.vue'
 import pkg from '../../package.json'
 
 const appVersion = `v${pkg.version}`
+const checkingUpdate = ref(false)
+
+async function onCheckUpdate() {
+  if (checkingUpdate.value) return
+  checkingUpdate.value = true
+  try {
+    const result = await checkForUpdates()
+    if (result?.updateInfo) {
+      if (result.updateInfo.version === pkg.version) showToast('已是最新版本', 'info')
+      // 有新版本时，App.vue 的更新横幅会接管后续提示
+    } else {
+      showToast('无法检查更新（非打包环境或网络异常）', 'info')
+    }
+  } catch {
+    showToast('检查更新失败', 'info')
+  } finally {
+    checkingUpdate.value = false
+  }
+}
 
 const settingStore = useSettingStore()
 const { t, locale, setLocale } = useI18n()
@@ -518,6 +542,10 @@ function resetShortcut(action) {
 .about-link { font-size: 12px; color: var(--accent); text-decoration: none; margin-top: 4px; }
 .about-link:hover { text-decoration: underline; }
 .about-license { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
+.about-actions { display: flex; flex-direction: column; gap: 6px; margin-left: auto; }
+.about-btn { padding: 7px 16px; border: none; border-radius: 8px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.about-btn:hover:not(:disabled) { filter: brightness(1.1); }
+.about-btn:disabled { opacity: 0.6; cursor: default; }
 
 .api-server-control { margin-top: 12px; padding: 12px 14px; background: rgba(128,128,128,0.06); border: 1px solid var(--border-light); border-radius: 8px; }
 .api-server-row { display: flex; align-items: center; justify-content: space-between; }

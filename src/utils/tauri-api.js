@@ -116,3 +116,17 @@ export async function scanMusicDirs(opts) {
     return []
   } catch { return [] }
 }
+
+export async function checkForUpdates() {
+  try {
+    if (window.electronAPI?.checkForUpdates) return await window.electronAPI.checkForUpdates()
+    return null
+  } catch { return null }
+}
+
+export async function installUpdate() {
+  try {
+    if (window.electronAPI?.installUpdate) return await window.electronAPI.installUpdate()
+  } catch {}
+  return false
+}

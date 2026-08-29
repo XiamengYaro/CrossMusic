@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, globalShortcut, shell } = require('electron')
+const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const fs = require('fs')
 const net = require('net')
@@ -92,6 +93,72 @@ async function writeLog(level, message) {
   await fs.promises.appendFile(logFile, line, 'utf-8')
 }
 
+// --- 自动更新 ---
+
+let updateChecking = false
+
+function sendUpdateEvent(type, payload = {}) {
+  mainWindow?.webContents.send('update-event', { type, ...payload })
+}
+
+function setupAutoUpdater() {
+  autoUpdater.autoDownload = true
+  autoUpdater.autoInstallOnAppQuit = true
+  autoUpdater.logger = {
+    info: (msg) => { console.log('[Updater]', msg); writeLog('INFO', `[Updater] ${msg}`) },
+    warn: (msg) => { console.warn('[Updater]', msg); writeLog('warn', `[Updater] ${msg}`) },
+    error: (msg) => { console.error('[Updater]', msg); writeLog('error', `[Updater] ${msg}`) },
+    debug: (msg) => console.debug('[Updater]', msg),
+  }
+
+  autoUpdater.on('checking-for-update', () => sendUpdateEvent('checking-for-update'))
+  autoUpdater.on('update-available', (info) => {
+    sendUpdateEvent('update-available', { version: info.version })
+    writeLog('INFO', `[Updater] update available: v${info.version}`)
+  })
+  autoUpdater.on('update-not-available', (info) => {
+    sendUpdateEvent('update-not-available', { version: info.version })
+    writeLog('INFO', '[Updater] update not available')
+  })
+  autoUpdater.on('download-progress', (progress) => {
+    sendUpdateEvent('update-download-progress', {
+      percent: Math.round(progress.percent),
+      transferred: progress.transferred,
+      total: progress.total,
+      bytesPerSecond: progress.bytesPerSecond,
+    })
+  })
+  autoUpdater.on('update-downloaded', (info) => {
+    sendUpdateEvent('update-downloaded', { version: info.version })
+    writeLog('INFO', `[Updater] update downloaded: v${info.version}`)
+  })
+  autoUpdater.on('error', (err) => {
+    console.error('[Updater] error:', err)
+    writeLog('error', `[Updater] ${err.message || err}`)
+    sendUpdateEvent('update-error', { message: err.message || String(err) })
+  })
+}
+
+async function checkForUpdates({ manual = false } = {}) {
+  if (updateChecking) return null
+  if (!app.isPackaged) {
+    // 开发模式没有 app-update.yml，无法检查
+    if (manual) sendUpdateEvent('update-error', { message: '开发模式下不支持自动更新' })
+    return null
+  }
+  updateChecking = true
+  try {
+    const result = await autoUpdater.checkForUpdates()
+    return result
+  } catch (e) {
+    writeLog('error', `[Updater] check failed: ${e.message}`)
+    sendUpdateEvent('update-error', { message: e.message || String(e) })
+    return null
+  } finally {
+    updateChecking = false
+  }
+}
+
 function createWindow() {
   const iconPath = path.join(__dirname, '../build/icon.png')
 
@@ -165,6 +232,7 @@ function buildTrayMenu() {
   }
   items.push({ type: 'separator' })
   items.push({ label: '显示 CrossMusic', click: () => { if (mainWindow) mainWindow.show() } })
+  items.push({ label: '检查更新', click: () => { checkForUpdates({ manual: true }) } })
   items.push({ type: 'separator' })
   items.push({ label: '退出', click: () => { app.isQuitting = true; app.quit() } })
   return Menu.buildFromTemplate(items)
@@ -231,7 +299,10 @@ app.whenReady().then(async () => {
   createWindow()
   createTray()
   registerShortcuts()
+  setupAutoUpdater()
   writeLog('INFO', 'Application started')
+  // 启动后延迟检查更新，避免影响首屏加载
+  setTimeout(() => { checkForUpdates() }, 10000)
 })
 
 app.on('before-quit', () => {
@@ -431,5 +502,12 @@ ipcMain.handle('reset-app', () => {
 })
 ipcMain.handle('update-shortcuts', (_event, shortcuts) => {
   registerShortcuts(shortcuts)
+  return true
+})
+
+ipcMain.handle('check-for-updates', () => checkForUpdates({ manual: true }))
+
+ipcMain.handle('install-update', () => {
+  autoUpdater.quitAndInstall(false, true)
   return true
 })
