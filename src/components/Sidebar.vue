@@ -1,5 +1,5 @@
 <template>
-  <div class="sidebar">
+  <div class="sidebar" :class="{ 'is-mac': isMacOS, 'is-win': isWindows }">
     <!-- Search -->
     <div class="sidebar-search-wrap">
       <div class="sidebar-search" :class="{ focused: searchFocused }">
@@ -169,6 +169,11 @@ import { searchSuggest } from '@/api/song'
 import { showToast } from '@/utils/toast'
 import Icon from '@/components/icons/Icon.vue'
 
+// 平台判断：顶部预留空间不同（mac 红绿灯 / Windows 自定义标题栏 / Linux 原生标题栏）
+const platform = window.electronAPI?.platform || ''
+const isMacOS = platform === 'darwin' || navigator.userAgent.includes('Mac') || navigator.platform.includes('Mac')
+const isWindows = !isMacOS && (platform === 'win32' || (typeof window.__TAURI_INTERNALS__ !== 'undefined' && !navigator.userAgent.includes('Mac')))
+
 const emit = defineEmits(['show-login'])
 const route = useRoute()
 const router = useRouter()
@@ -302,8 +307,13 @@ watch(() => userStore.isLoggedIn, () => loadPlaylists())
   border-right: 1px solid rgba(255,255,255,0.08);
   box-shadow: inset -1px 0 0 rgba(255,255,255,0.04);
   border-right: 1px solid var(--border-light); user-select: none;
-  padding-top: 52px;
+  padding-top: 12px; /* Linux/默认：原生标题栏，无需预留 */
 }
+
+/* macOS：顶部留给红绿灯 */
+.sidebar.is-mac { padding-top: 52px; }
+/* Windows：自定义标题栏 32px + 呼吸位，搜索框紧贴标题栏下方 */
+.sidebar.is-win { padding-top: 40px; }
 
 .sidebar-search-wrap { padding: 8px 12px 4px; position: relative; }
 .sidebar-search {
